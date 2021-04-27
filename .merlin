@@ -2,4 +2,4 @@ S src
 
 B build
 
-PKG lwt cohttp cohttp-lwt-unix cohttp-async
+PKG lwt cohttp cohttp-lwt-unix cohttp-async ppx_let
