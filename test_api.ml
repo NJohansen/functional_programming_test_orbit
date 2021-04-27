@@ -3,7 +3,7 @@ open Cohttp
 open Cohttp_lwt_unix
 
 let body =
-  Client.get (Uri.of_string "https://www.reddit.com/") >>= fun (resp, body) ->
+  Client.get (Uri.of_string "http://localhost:8085/file/list?userId=0") >>= fun (resp, body) ->
   let code = resp |> Response.status |> Code.code_of_status in
   Printf.printf "Response code: %d\n" code;
   Printf.printf "Headers: %s\n" (resp |> Response.headers |> Header.to_string);
@@ -12,6 +12,6 @@ let body =
   body
 
 let () =
-  print_endline("Test")
-(** let body = Lwt_main.run body in
-    print_endline ("Received body\n" ^ body)*)
+  (**print_endline("Test")*)
+  let body = Lwt_main.run body in
+  print_endline ("Received body\n" ^ body)
