@@ -1,0 +1,3 @@
+(executable
+	(name fstest)
+	(libraries cohttp cohttp-async async))
