@@ -1,1 +1,1 @@
-PKG ppx_deriving.show lwt cohttp cohttp-lwt-unix cohttp-async ppx_let
+PKG ppx_deriving.show lwt cohttp cohttp-lwt-unix cohttp-async ppx_let ezcurl
