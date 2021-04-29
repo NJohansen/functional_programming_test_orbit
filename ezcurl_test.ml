@@ -1,6 +1,6 @@
 open Ezcurl
 
-let url = "https://curl.haxx.se/";;
+let url = "http://localhost:8085/file/list?userId=1";;
 
 let print_ltuples l = List.iter (fun (a,b) -> Printf.printf "%s, %s \n" a b) l
 
