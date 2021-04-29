@@ -42,7 +42,7 @@ let map_response (http_res: Ezcurl_core.response): response = {
 }
 
 
-let url = "http://localhost:8085/file/list?userId=1";;
+let url_file_list = "http://localhost:8085/file/list?userId=1";;
 
 let print_ltuples l = List.iter (fun (a,b) -> Printf.printf "%s, %s \n" a b) l;;
 
@@ -56,21 +56,23 @@ let print_ltuples l = List.iter (fun (a,b) -> Printf.printf "%s, %s \n" a b) l;;
  | Error (_) -> 1
 ;; *)
 
-let checkGetListOfFiles (userId: int): int = 
+let checkGetListOfFiles (userId: int): bool =
+  let url = "http://localhost:8085/file/list?userId=" ^ (string_of_int userId) in
   match Ezcurl.get ~url: url () with
   | Ok resp -> (
       match map_response resp with
-      | { status_code = HttpOk; _} -> 1
-      | _ -> 0
+      | { status_code = HttpOk; _} -> true
+      | _ -> false
     )
-  | Error (_) -> 0
+  | Error (_) -> false
 ;;
 
 let get_file_list = 
   Test.make ~name:"get_file_list" ~count:1000 ~max_gen:500  
   int
-  (fun i -> checkGetListOfFiles i == 1)
+  (fun i -> checkGetListOfFiles i == true)
 ;;
+
 QCheck_runner.run_tests ~verbose:true [get_file_list];;
 
 (* let res = Ezcurl.get ~url: url ();;
