@@ -1,6 +1,6 @@
 open Ezcurl
 
-type user_rights = Bypass | ReadWrite | Write | None [@@deriving show]
+type user_rights = Bypass | ReadWrite | Read | None [@@deriving show]
 
 type userEntity = {
   id: int;
@@ -18,7 +18,7 @@ type directoryEntity = {
   name: string;
   path: string;
   version: int;
-  permissions: (directory_permissions * bool);
+  permissions: (directory_permissions * bool) list;
   parent: directoryParent;
   is_checked_out: bool;
   is_default: bool;
@@ -38,15 +38,22 @@ type system = {
   directories: directoryEntity list;
   files: fileEntity list;
 } [@@deriving show]
-(* type (userEntity list, directoryEntity list, fileEntity list) t *)
-(* type ('a, 'b, 'c) t *)
-type 'a t
+
+(* let get_file_list userId = *)
+
+let addUser (state: system) (userId: int) (permissions: user_rights) = 
+  let user = {id = userId; rights = permissions} in
+  {
+    users = user::state.users;
+    directories = state.directories;
+    files = state.files;
+  } 
 
 let initState = 
   {
-    users = [];
+    users = [{id = 0; rights = Bypass}; {id = 100; rights = ReadWrite}; {id = 101; rights = Read}; {id = 102; rights = None}];
     directories = [];
-    files = []
+    files = [];
   }
+;;
 
-(* let get_file_list userId = *)
