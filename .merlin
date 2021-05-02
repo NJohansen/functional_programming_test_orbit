@@ -1,1 +1,1 @@
-PKG ppx_lib.show ppx_let ezcurl qcheck qcstm
+PKG ppx_lib.show ppx_let ezcurl qcheck qcstm yojson

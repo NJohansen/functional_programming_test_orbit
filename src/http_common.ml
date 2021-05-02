@@ -17,6 +17,7 @@ type response = {
   status_code: status_code;
   content_type: string option;
   x_conflict: string option;
+  x_entity: string option;
 }
   (* x_file_version: string option;
   x_file_path: string option;
@@ -41,6 +42,7 @@ let map_response (http_res: Ezcurl_core.response): response = {
   status_code = status_code_of_int http_res.code;
   content_type = map_header http_res.headers "Content-Type";
   x_conflict = map_header http_res.headers "X-Conflict";
+  x_entity = map_header http_res.headers "X-Entity";
 }
 
 
@@ -71,7 +73,7 @@ let checkGetListOfFiles (userId: int): bool =
 
 let get_file_list = 
   Test.make ~name:"get_file_list" ~count:1000 ~max_gen:500  
-  int
+  small_signed_int
   (fun i -> checkGetListOfFiles i == true)
 ;;
 
