@@ -7,7 +7,7 @@ type userEntity = {
   rights: user_rights;
 } [@@deriving show]
 
-type directory_permissions = Crud | Read [@@deriving show]
+type directory_permissions = Crud | Read | None [@@deriving show]
 
 type directoryEntity = {
   id: int;
@@ -15,18 +15,23 @@ type directoryEntity = {
   path: string;
   version: int;
   permissions: (user_rights * directory_permissions) list;
-  parent: int;
+  parent: int option;
   is_checked_out: bool;
   is_default: bool;
 } [@@deriving show]
 
 type fileEntity = {
   id: int;
-  version: int;
-  versionChanged: int;
   name: string;
+  size: int;
+  mimetype: string;
   parentId: int;
-  timestamp: string;
+  version: int;
+  createdAt: string;
+  modifiedAt: string;
+  msTimestamp: int;
+  path: string;
+  snapshotsEnabled: bool;
 } [@@deriving show]
 
 type system = {
@@ -41,11 +46,31 @@ let initState =
   {
     users = [{id = 0; rights = Bypass}; {id = 100; rights = ReadWrite}; {id = 101; rights = ReadOnly}; {id = 102; rights = None}];
     directories = 
-      [{id = 17; name = "Project 1"; path = "server-files/Projects/Project 1"; version = 1; permissions = [(ReadWrite, Crud); (ReadOnly, Read)]; parent = 2; is_checked_out = true; is_default = true;};
-       {id = 18; name = "Project 2"; path = "server-files/Projects/Project 2"; version = 1; permissions = [(ReadWrite, Crud); (ReadOnly, Read)]; parent = 2; is_checked_out = true; is_default = true;};
-       {id = 16; name = "ro"; path = "server-files/Users/ro"; version = 1; permissions = [(ReadOnly, Crud)]; parent = 14; is_checked_out = true; is_default = true;};
-       {id = 15; name = "rw"; path = "server-files/Users/rw"; version = 1; permissions = [(ReadWrite, Crud)]; parent = 14; is_checked_out = true; is_default = true;};];
-    files = [{id = 1; version = 1; versionChanged = 1; name = "filename"; parentId = 1; timestamp = "13"}];
+      [{id = 1; name = "server-files"; path = "server-files/"; version = 1; permissions = []; parent = None; is_checked_out = true; is_default = true;};
+       {id = 10; name = "Companies"; path = "server-files/Companies/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 13; name = "File importer"; path = "server-files/File importer/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 21; name = "Delete me too"; path = "server-files/File importer/Delete me too/"; version = 1; permissions = []; parent = Some 13; is_checked_out = true; is_default = true;};
+       {id = 3; name = "Project deliverables"; path = "server-files/Project deliverables/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 8; name = "Project emails"; path = "server-files/Project emails/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 2; name = "Projects"; path = "server-files/Projects/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 17; name = "Project 1"; path = "server-files/Projects/Project 1/"; version = 1; permissions = [(ReadWrite, Crud); (ReadOnly, Read)]; parent = Some 2; is_checked_out = true; is_default = true;};
+       {id = 18; name = "Project 2"; path = "server-files/Projects/Project 2/"; version = 1; permissions = [(ReadWrite, Crud); (ReadOnly, Read)]; parent = Some 2; is_checked_out = true; is_default = true;};
+       {id = 4; name = "Project Templates"; path = "server-files/Project Templates/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 5; name = "Standard - 1"; path = "server-files/Project Templates/Standard - 1/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 6; name = "deliverables"; path = "server-files/Project Templates/Standard - 1/deliverables/"; version = 1; permissions = []; parent = Some 5; is_checked_out = true; is_default = true;};
+       {id = 7; name = "explorer_root"; path = "server-files/Project Templates/Standard - 1/explorer_root/"; version = 1; permissions = []; parent = Some 5; is_checked_out = true; is_default = true;};
+       {id = 12; name = "Sales Activities"; path = "server-files/Sales Activities/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 9; name = "Shared files"; path = "server-files/Shared files/"; version = 1; permissions = [(ReadWrite, Crud); (ReadOnly, Read)]; parent = Some 1; is_checked_out = false; is_default = false;};
+       {id = 20; name = "Delete me"; path = "server-files/Shared files/Delete me/"; version = 1; permissions = []; parent = Some 9; is_checked_out = true; is_default = true;};
+       {id = 11; name = "snapshots"; path = "server-files/snapshots/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 14; name = "Users"; path = "server-files/Users/"; version = 1; permissions = []; parent = Some 1; is_checked_out = true; is_default = true;};
+       {id = 19; name = "none"; path = "server-files/Users/none/"; version = 1; permissions = [(None, Crud)]; parent = Some 14; is_checked_out = true; is_default = true;};
+       {id = 16; name = "ro"; path = "server-files/Users/ro/"; version = 1; permissions = [(ReadOnly, Crud)]; parent = Some 14; is_checked_out = true; is_default = true;};
+       {id = 15; name = "rw"; path = "server-files/Users/rw/"; version = 1; permissions = [(ReadWrite, Crud)]; parent = Some 14; is_checked_out = true; is_default = true;};];
+    files = 
+      [{id = 2; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; };
+       {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; };
+       {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; }];
   }
 
 let get_user (userId: int) (state: system) : userEntity option =
@@ -62,14 +87,15 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
   | None -> []
   | Some user ->
 
-    let rec can_read_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) : bool =
-      match userRight, permissions with
-      | _, [] -> false
-      | Bypass, (Bypass, _)::_ -> true
-      | ReadWrite, (ReadWrite, _)::_ -> true
-      | ReadOnly, (ReadOnly, _)::_ -> true
-      | None, (None, _)::_ -> true
-      | u, f::r -> can_read_directory u r in
+    let rec can_read_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) (isCheckedOut: bool) : bool =
+      match userRight, permissions, isCheckedOut with
+      | _, [], _ -> false
+      | _, _, false -> false
+      | Bypass, (Bypass, _)::_, true -> true
+      | ReadWrite, (ReadWrite, _)::_, true -> true
+      | ReadOnly, (ReadOnly, _)::_, true -> true
+      | None, (None, _)::_, true -> true
+      | u, f::r, t -> can_read_directory u r t in
 
-    List.filter (fun d -> can_read_directory user.rights d.permissions) state.directories
+    List.filter (fun d -> can_read_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
