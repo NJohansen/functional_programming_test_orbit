@@ -52,8 +52,7 @@ let addUser (state: system) (userId: int) (permissions: user_rights) =
 let initState = 
   {
     users = [{id = 0; rights = Bypass}; {id = 100; rights = ReadWrite}; {id = 101; rights = Read}; {id = 102; rights = None}];
-    directories = [];
-    files = [];
+    directories = [{id = 15; name = "rw"; path = "server-files/Users/rw/"; version = 1; permissions = [(Create, true); (Read, true); (Update, true); (Delete, true)]; parent = {id = 14}; is_checked_out = true; is_default = true;}];      
+    files = [{id = 1; version = 1; versionChanged = 1; name = "filename"; parentId = 1; timestamp = "13"}];
   }
 ;;
-
