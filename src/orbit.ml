@@ -73,4 +73,3 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
 
     List.filter (fun d -> can_read_directory user.rights d.permissions) state.directories
 ;;
-
