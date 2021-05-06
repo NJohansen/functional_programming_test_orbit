@@ -1,4 +1,5 @@
 open QCheck 
+open Filelist
 
 module CConf =
 struct
@@ -21,11 +22,11 @@ struct
   let init_sut () = Orbit.initState
   let cleanup _   = ()
   let run_cmd c s h = match c with
-    | Get_File_List _ -> true
+    | Get_File_List userId -> (Filelist.checkGetListOfFiles userId h)
 
   let precond _ _ = true
 end
 module CT = QCSTM.Make(CConf)
 ;;
 QCheck_runner.run_tests ~verbose:true
-  [CT.agree_test ~count:500 ~name:"Hashtbl-model agreement"]
+  [CT.agree_test ~count:10 ~name:"orbit-model agreement"]
