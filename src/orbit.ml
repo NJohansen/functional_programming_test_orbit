@@ -70,7 +70,7 @@ let initState =
     files = 
       [{id = 2; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; };
        {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; };
-       {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; }];
+       {id = 3; name = "READMEs.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; }];
   }
 
 let get_user (userId: int) (state: system) : userEntity option =
@@ -140,3 +140,4 @@ let get_directory (directoryId: int) (state: system) : directoryEntity option =
     | f::r 
       -> if f.id = id then Some(f) else find_directory id r in
   find_directory directoryId state.directories
+;;

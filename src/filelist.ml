@@ -2,6 +2,8 @@ open Ezcurl
 open Yojson
 open Yojson.Basic.Util
 open Http_common
+open Orbit
+open Util
 
 type directoryVersionsElement = {
   id: int;
@@ -17,7 +19,7 @@ type fileListElement = {
   timestamp: string;
 } [@@deriving show]
 
-type jsonData = {
+type resultData = {
   directoryVersions: directoryVersionsElement list;
   fileList: fileListElement list;
 } [@@deriving show]
@@ -50,13 +52,39 @@ let from_body body =
     fileList = fileList;
   }
 
-let checkGetListOfFiles (userId: int): bool =
+
+let getExpectedResultData (userId: int) (state: Orbit.system) : resultData =
+  let expectedDirectories: Orbit.directoryEntity list = Orbit.get_list_directory userId state in
+  let expectedDirectoryVersionsElements: directoryVersionsElement list = 
+    List.map (fun (dir: Orbit.directoryEntity) -> {id = dir.id; version = dir.version}) expectedDirectories in
+  
+  let expectedFiles: Orbit.fileEntity list = Orbit.get_list_files userId state in
+  let expectedFileListElements: fileListElement list =
+    List.map (fun (file: Orbit.fileEntity) -> 
+      {id = file.id; name = file.name; parentId = file.parentId; version = file.version; versionChanged = 1; timestamp = (string_of_int file.msTimestamp)}
+      ) expectedFiles in
+
+  {
+    directoryVersions = expectedDirectoryVersionsElements;
+    fileList = expectedFileListElements;
+  }
+
+let matchBodyWithExpectedResult (bodyResult: resultData) (userId: int) (state: Orbit.system) : bool =
+  let expectedData = getExpectedResultData userId state in
+
+  let checkDirectories = Util.all_present expectedData.directoryVersions bodyResult.directoryVersions in
+  let checkFiles = Util.all_present expectedData.fileList bodyResult.fileList in
+
+  if checkDirectories && checkFiles then true else false
+
+let checkGetListOfFiles (userId: int) (state: Orbit.system): bool =
   let url = "http://localhost:8085/file/list?userId=" ^ (string_of_int userId) in
   match Ezcurl.get ~url: url () with
   | Ok resp -> (
     match map_response resp with
     | { status_code = HttpOk; _} -> 
-      let b = from_body resp.body in
+      let bodyRes = from_body resp.body in
+      matchBodyWithExpectedResult bodyRes userId state
     | _ -> false
     )
   | Error (_) -> false
