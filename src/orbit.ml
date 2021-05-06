@@ -80,6 +80,14 @@ let get_user (userId: int) (state: system) : userEntity option =
     | f::r 
       -> if f.id = id then Some(f) else find_user id r in
   find_user userId state.users
+;;  
+
+(**WIP *)
+let rec create_user user_list i =
+  match user_list with
+    [] -> [i]
+  | h :: t -> h :: (create_user t i)
+;;
 
 let get_list_directory (userId: int) (state: system) : directoryEntity list =
   let userOption = get_user userId state in
@@ -100,3 +108,35 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
 
     List.filter (fun d -> can_read_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
+
+let get_file (fileId: int) (state: system) : fileEntity option =
+  let rec find_file (id: int) (files: fileEntity list) : fileEntity option =
+    match files with 
+    | [] -> None
+    | f::r 
+      -> if f.id = id then Some(f) else find_file id r in
+  find_file fileId state.files
+;;
+
+let get_list_files (userId: int) (state: system) : fileEntity list =
+  let availableDirectories = get_list_directory userId state in
+  match availableDirectories with
+  | [] -> []
+  | list -> 
+      
+      let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
+      match dirList with 
+      | [] -> fileList
+      | head::tail -> let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
+      match_parent_id tail fileList@files in
+    
+    match_parent_id list []
+;;
+
+let get_directory (directoryId: int) (state: system) : directoryEntity option =
+  let rec find_directory (id: int) (directorys: directoryEntity list) : directoryEntity option =
+    match directorys with 
+    | [] -> None
+    | f::r 
+      -> if f.id = id then Some(f) else find_directory id r in
+  find_directory directoryId state.directories
