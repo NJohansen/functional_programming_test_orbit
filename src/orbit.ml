@@ -88,14 +88,15 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
   | Some user ->
 
     let rec can_read_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) (isCheckedOut: bool) : bool =
-      match userRight, permissions, isCheckedOut with
-      | _, [], _ -> false
-      | _, _, false -> false
-      | Bypass, (Bypass, _)::_, true -> true
-      | ReadWrite, (ReadWrite, _)::_, true -> true
-      | ReadOnly, (ReadOnly, _)::_, true -> true
-      | None, (None, _)::_, true -> true
-      | u, f::r, t -> can_read_directory u r t in
+      if isCheckedOut == false
+      then false else (
+        match userRight, permissions with
+        | _, []-> false
+        | Bypass, (Bypass, _)::_ -> true
+        | ReadWrite, (ReadWrite, _)::_ -> true
+        | ReadOnly, (ReadOnly, _)::_ -> true
+        | None, (None, _)::_ -> true
+        | u, f::r -> can_read_directory u r true) in
 
     List.filter (fun d -> can_read_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
