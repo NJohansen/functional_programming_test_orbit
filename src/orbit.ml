@@ -68,7 +68,7 @@ let initState =
        {id = 16; name = "ro"; path = "server-files/Users/ro/"; version = 1; permissions = [(ReadOnly, Crud)]; parent = Some 14; is_checked_out = true; is_default = true;};
        {id = 15; name = "rw"; path = "server-files/Users/rw/"; version = 1; permissions = [(ReadWrite, Crud)]; parent = Some 14; is_checked_out = true; is_default = true;};];
     files = 
-      [{id = 2; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; };
+      [{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; };
        {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; };
        {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; }];
   }
@@ -109,6 +109,24 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
     List.filter (fun d -> can_read_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
 
+let get_list_directory_ignore_checkout (userId: int) (state: system) : directoryEntity list =
+  let userOption = get_user userId state in
+  match userOption with
+  | None -> []
+  | Some user ->
+
+    let rec can_read_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) : bool =
+        (match userRight, permissions with
+        | _, []-> false
+        | Bypass, (Bypass, _)::_ -> true
+        | ReadWrite, (ReadWrite, _)::_ -> true
+        | ReadOnly, (ReadOnly, _)::_ -> true
+        | None, (None, _)::_ -> true
+        | u, f::r -> can_read_directory u r ) in
+
+    List.filter (fun d -> can_read_directory user.rights d.permissions) state.directories
+;;
+
 let get_file (fileId: int) (state: system) : fileEntity option =
   let rec find_file (id: int) (files: fileEntity list) : fileEntity option =
     match files with 
@@ -133,6 +151,21 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
     match_parent_id list []
 ;;
 
+let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
+  let availableDirectories = get_list_directory_ignore_checkout userId state in
+  match availableDirectories with
+  | [] -> []
+  | list -> 
+      
+      let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
+      match dirList with 
+      | [] -> fileList
+      | head::tail -> let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
+      match_parent_id tail fileList@files in
+    
+    match_parent_id list []
+;;
+
 let get_directory (directoryId: int) (state: system) : directoryEntity option =
   let rec find_directory (id: int) (directorys: directoryEntity list) : directoryEntity option =
     match directorys with 
@@ -140,4 +173,34 @@ let get_directory (directoryId: int) (state: system) : directoryEntity option =
     | f::r 
       -> if f.id = id then Some(f) else find_directory id r in
   find_directory directoryId state.directories
+;;
+
+let get_file_path (fileId: int) (state: system): string option =
+  let fileOption: fileEntity option = get_file fileId state in
+  match fileOption with 
+  | None -> None
+  | Some file -> 
+    let rec create_path (patentId: int option) (append: string) (path: string): string =
+      (match patentId with
+      | None -> path
+      | Some id -> 
+        (match (get_directory id state) with 
+        | None -> path
+        | Some d -> 
+          (if path = "" 
+          then create_path d.parent d.name append
+          else create_path d.parent d.name (append ^ "/" ^ path)))
+      ) in
+    Some (create_path (Some file.parentId) file.name "")
+;;
+
+let can_read_file (userId: int) (fileId: int) (state: system): bool =
+  let userOption = get_user userId state in
+  match userOption with
+  | None -> false
+  | Some user ->
+    if user.rights = Bypass then true else
+    let filesList = get_list_files_ignore_checkout userId state in
+    let file = List.filter (fun f -> f.id = fileId) filesList in
+    if List.length file = 1 then true else false
 ;;

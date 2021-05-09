@@ -25,6 +25,8 @@ type response = {
   content_type: string option;
   x_conflict: string option;
   x_entity: string option;
+  x_file_path: string option;
+  x_access_denied: string option;
 }
   (* x_file_version: string option;
   x_file_path: string option;
@@ -41,7 +43,7 @@ let rec map_header (headers: (string * string) list) (lookAfter: string): string
   | [] -> None
   | first::rest -> 
     match first with
-    | (lookAfter, b) -> Some(b)
+    | (n, b) when n = lookAfter -> Some(b)
     | _ -> map_header rest lookAfter
 
 
@@ -50,4 +52,22 @@ let map_response (http_res: Ezcurl_core.response): response = {
   content_type = map_header http_res.headers "Content-Type";
   x_conflict = map_header http_res.headers "X-Conflict";
   x_entity = map_header http_res.headers "X-Entity";
+  x_file_path = map_header http_res.headers "X-File-Path";
+  x_access_denied = map_header http_res.headers "X-Access-Denied";
 }
+
+let create_response 
+  ?(content_type: string option = None) 
+  ?(x_conflict: string option = None) 
+  ?(x_entity: string option = None)
+  ?(x_file_path: string option = None)
+  ?(x_access_denied: string option = None)
+  (status: status_code) : response =
+  {
+    status_code = status;
+    content_type = content_type;
+    x_conflict = x_conflict;
+    x_entity = x_entity;
+    x_file_path = x_file_path;
+    x_access_denied = x_access_denied;
+  }
