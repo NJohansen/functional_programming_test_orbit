@@ -109,6 +109,26 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
     List.filter (fun d -> can_read_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
 
+let get_write_access_directories (userId: int) (state: system): directoryEntity list = 
+  let userOption = get_user userId state in
+  match userOption with
+  | None -> []
+  | Some user ->
+
+    let rec can_write_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) (isCheckedOut: bool) : bool =
+      if isCheckedOut == false
+      then false else (
+        match userRight, permissions with
+        | _, []-> false
+        | Bypass, (Bypass, _)::_ -> true
+        | ReadWrite, (ReadWrite, _)::_ -> true
+        | ReadOnly, (ReadOnly, _)::_ -> false
+        | None, (None, _)::_ -> false
+        | u, f::r -> can_write_directory u r true) in
+
+    List.filter (fun d -> can_write_directory user.rights d.permissions d.is_checked_out) state.directories
+;;
+
 let get_file (fileId: int) (state: system) : fileEntity option =
   let rec find_file (id: int) (files: fileEntity list) : fileEntity option =
     match files with 
