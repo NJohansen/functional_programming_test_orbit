@@ -166,18 +166,16 @@ let get_write_access_directories (userId: int) (state: system): directoryEntity 
   match userOption with
   | None -> []
   | Some user ->
-    let rec can_write_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) (isCheckedOut: bool) : bool =
-      if isCheckedOut == false
-      then false else (
-        match userRight, permissions with
+    let rec can_write_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) : bool =
+      (match userRight, permissions with
         | _, []-> false
         | Bypass, _ -> true
         | ReadWrite, (ReadWrite, _)::_ -> true
         | ReadOnly, (ReadOnly, _)::_ -> false
         | None, (None, _)::_ -> false
-        | u, f::r -> can_write_directory u r true) in
+        |  _, f::r -> can_write_directory user dirId r) in
 
-    List.filter (fun d -> can_write_directory user.rights d.permissions d.is_checked_out) state.directories
+    List.filter (fun (d: directoryEntity) -> can_write_directory user d.id d.permissions) state.directories
 ;;
 
 (*
