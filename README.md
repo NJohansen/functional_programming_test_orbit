@@ -10,10 +10,12 @@ docker run --rm -p8085:8085 -eCLICOLOR_FORCE=1 cr.orbit.dev/sdu/filesync-server:
 #require "yojson";;
 #require "qcheck";;
 #require "qcstm";;
+#mod_use "util.ml";;
 #mod_use "orbit.ml";;
 #mod_use "http_common.ml";;
-#mod_use "util.ml";;
-#mod_use "fileList.ml";;
+
+#mod_use "filelist.ml";;
+#mod_use "getfile.ml";;
 
 #require "ppx_deriving.show";;  is breaks orbit.ml
 
