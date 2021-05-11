@@ -109,18 +109,19 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
     List.filter (fun d -> can_read_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
 
+
+(* Returns the list of directories that the user has write access to *)
 let get_write_access_directories (userId: int) (state: system): directoryEntity list = 
   let userOption = get_user userId state in
   match userOption with
   | None -> []
   | Some user ->
-
     let rec can_write_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) (isCheckedOut: bool) : bool =
       if isCheckedOut == false
       then false else (
         match userRight, permissions with
         | _, []-> false
-        | Bypass, (Bypass, _)::_ -> true
+        | Bypass, _ -> true
         | ReadWrite, (ReadWrite, _)::_ -> true
         | ReadOnly, (ReadOnly, _)::_ -> false
         | None, (None, _)::_ -> false
@@ -128,6 +129,10 @@ let get_write_access_directories (userId: int) (state: system): directoryEntity 
 
     List.filter (fun d -> can_write_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
+
+(* Creates a file in a specified directory *)
+let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: string): system = 
+  
 
 let get_file (fileId: int) (state: system) : fileEntity option =
   let rec find_file (id: int) (files: fileEntity list) : fileEntity option =
