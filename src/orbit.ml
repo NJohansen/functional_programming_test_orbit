@@ -38,6 +38,8 @@ type system = {
   users: userEntity list;
   directories: directoryEntity list;
   files: fileEntity list;
+  directoryIdCounter: int;
+  fileIdCounter: int;
 } [@@deriving show]
 
 (* let get_file_list userId = *)
@@ -71,6 +73,8 @@ let initState =
       [{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; };
        {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; };
        {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; }];
+    directoryIdCounter = 21;
+    fileIdCounter = 4;
   }
 
 let get_user (userId: int) (state: system) : userEntity option =
@@ -171,10 +175,17 @@ let get_write_access_directories (userId: int) (state: system): directoryEntity 
     List.filter (fun d -> can_write_directory user.rights d.permissions d.is_checked_out) state.directories
 ;;
 
+(*
+(*{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; 
+createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; 
+path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; }; *)
 (* Creates a file in a specified directory *)
 let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: string): system = 
-  
+  let fileId
+  let new_file = {} in 
 
+  
+*)
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
   let availableDirectories = get_list_directory_ignore_checkout userId state in
   match availableDirectories with
