@@ -209,3 +209,14 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
     let file = List.filter (fun f -> f.id = fileId) filesList in
     if List.length file = 1 then true else false
 ;;
+
+let can_read_directory (userId: int) (dirId: int) (state: system): bool =
+  let userOption = get_user userId state in
+  match userOption with
+  | None -> false
+  | Some user ->
+    if user.rights = Bypass then true else
+    let dirList: directoryEntity list = get_list_directory_ignore_checkout userId state in
+    let dir = List.filter (fun (f: directoryEntity) -> f.id = dirId) dirList in
+    if List.length dir = 1 then true else false
+;;
