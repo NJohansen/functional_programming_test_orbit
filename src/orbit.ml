@@ -161,36 +161,24 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
 ;;
 
 (* Returns the list of directories that the user has write access to *)
-let get_write_access_directories (userId: int) (state: system): directoryEntity list = 
+let get_write_access_directories (userId: int) (state: system) : directoryEntity list =
   let userOption = get_user userId state in
   match userOption with
   | None -> []
   | Some user ->
-    let rec can_write_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) : bool =
-      (match userRight, permissions with
+    let rec can_write_directory (user: userEntity) (dirId: int) (permissions: (user_rights * directory_permissions) list) : bool =
+      if Util.part_of_list user.checkedOut dirId == false
+      then false else (
+        match user.rights, permissions with
         | _, []-> false
-        | Bypass, _ -> true
+        | Bypass, _::_ -> true
         | ReadWrite, (ReadWrite, _)::_ -> true
         | ReadOnly, (ReadOnly, _)::_ -> false
         | None, (None, _)::_ -> false
-        |  _, f::r -> can_write_directory user dirId r) in
+        | _, f::r -> can_write_directory user dirId r) in
 
     List.filter (fun (d: directoryEntity) -> can_write_directory user d.id d.permissions) state.directories
 ;;
-
-(*
-(*{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; 
-createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; 
-path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; }; *)
-(* Creates a file in a specified directory *)
-let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: string): system = 
-  let fileId = system.fileIdCounter + 1 in 
-  let updateStateFileIdCounter = system.fileIdCounter = fileId in
-  let createdAt = in 
-  let path
-  let new_file = {} in 
-*)
-  
 
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
   let availableDirectories = get_list_directory_ignore_checkout userId state in
@@ -244,4 +232,41 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
     let filesList = get_list_files_ignore_checkout userId state in
     let file = List.filter (fun f -> f.id = fileId) filesList in
     if List.length file = 1 then true else false
+;;
+
+(* Creates a file in a specified directory *)
+(* We don't use the parameter timestamp, and it doesn't seem like Orbit does either? *)
+let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: string): system = 
+  let fileCounter = state.fileIdCounter in
+  let fileId = fileCounter + 1 in 
+  let createdAt = Util.create_ISO_timestamp () in 
+  let dir = get_directory parentId state in 
+  let path = 
+      match dir with 
+      |None -> "" 
+      |Some dir -> dir.path
+      in
+  let newFile = {
+      id = fileId;
+      name = name;
+      size = 0;
+      mimetype = "text/plain"; (*Not sure what to do here, there's mimetype for EVERY filetype. All of them. Do we really want to model that?*)
+      parentId = parentId;
+      version = 1;
+      createdAt = createdAt;
+      modifiedAt = createdAt;
+      msTimestamp = 637479675580000000; (* Seems to be what the Orbit API sets the msTimestamp to always *)
+      path = path;
+      snapshotsEnabled = false;
+    } in
+  let newFileList = newFile::state.files in  
+  let updateStateFileIdCounter = fileId in
+  let updatedState = { 
+    users = state.users;
+    directories = state.directories;
+    files = newFileList;
+    directoryIdCounter = state.directoryIdCounter;
+    fileIdCounter=  updateStateFileIdCounter;
+  } in
+  updatedState 
 ;;
