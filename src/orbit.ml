@@ -184,11 +184,14 @@ createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z";
 path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; }; *)
 (* Creates a file in a specified directory *)
 let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: string): system = 
-  let fileId
+  let fileId = system.fileIdCounter + 1 in 
+  let updateStateFileIdCounter = system.fileIdCounter = fileId in
+  let createdAt = in 
+  let path
   let new_file = {} in 
-
-  
 *)
+  
+
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
   let availableDirectories = get_list_directory_ignore_checkout userId state in
   match availableDirectories with
