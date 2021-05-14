@@ -1,6 +1,7 @@
 open QCheck 
 open Filelist
 open Getfile
+open CreateFile
 
 module CConf =
 struct
@@ -9,7 +10,7 @@ struct
   type cmd   =
     | Get_File_List of int 
     | Get_File of int * int [@@deriving show { with_path = false }]
-    (* | Create_File of (int) (int) (int) (int) *)
+    | Create_File of int * int * string * string  [@@deriving show { with_path = false }]
 
   let gen_cmd =
     Gen.oneof
@@ -22,12 +23,14 @@ struct
   let next_state c s = match c with
     | Get_File_List _ -> s
     | Get_File _ -> s
+    | Create_File _ -> s
 
   let init_sut () = Orbit.initState
   let cleanup _   = ()
   let run_cmd c s h = match c with
     | Get_File_List userId -> (Filelist.checkGetListOfFiles userId h)
     | Get_File (userId, fileId) -> Getfile.checkGetFile userId fileId h
+    | Create_File (userId, parentId, fileTitle, timestamp) -> CreateFile.checkCreateFile userId prantId fileTitle timestamp h
 
   let precond _ _ = true
 end

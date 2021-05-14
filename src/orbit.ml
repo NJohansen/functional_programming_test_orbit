@@ -235,7 +235,7 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
 ;;
 
 (* Creates a file in a specified directory *)
-(* We don't use the parameter timestamp, and it doesn't seem like Orbit does either? *)
+(* We don't use the timestamp parameter, and it doesn't seem like Orbit does either? *)
 let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: string): system = 
   let fileCounter = state.fileIdCounter in
   let fileId = fileCounter + 1 in 
