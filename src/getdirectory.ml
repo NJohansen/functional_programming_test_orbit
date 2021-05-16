@@ -44,16 +44,30 @@ let from_body body =
   match List.hd parentObject with 
   | (_,b) -> let parentId = (to_int_option b) in
   
-  let permissionObject = json |> member "__permissions" |> to_assoc in 
+  let any_permissions = json |> member "__permissions" in 
+  
+  (* Handle if it is the Bypass user *)
+  if any_permissions == `Null then  
+  Some({id = (json |> member "id" |> to_int); 
+  name = (json |> member "name" |> to_string);
+  path = (json |> member "path" |> to_string); 
+  version = (json |> member "version" |> to_int);
+  __permissions = None;
+  parent = parentId;
+  is_checked_out = (json |> member "is_checked_out" |> to_bool);
+  is_default = (json |> member "is_default" |> to_bool)})
+
+  (* If not bypass user *)
+  else let permissionObject = json |> member "__permissions" |> to_assoc in 
   let permissionList = map_permissionValues permissionObject in 
-  {id = (json |> member "id" |> to_int); 
+  Some({id = (json |> member "id" |> to_int); 
   name = (json |> member "name" |> to_string);
   path = (json |> member "path" |> to_string); 
   version = (json |> member "version" |> to_int);
   __permissions = permissionList;
   parent = parentId;
   is_checked_out = (json |> member "is_checked_out" |> to_bool);
-  is_default = (json |> member "is_default" |> to_bool)}
+  is_default = (json |> member "is_default" |> to_bool)})
 ;;
 
 let getExpectedHeader (userId: int) (dirId: int) (state: Orbit.system) : Http_common.response =
@@ -67,14 +81,32 @@ let getExpectedHeader (userId: int) (dirId: int) (state: Orbit.system) : Http_co
   Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk 
 ;;
 
+(* Helper method to getExpectedBody *)
+let get_checked_out_list (user: Orbit.userEntity option) : int list = 
+  match user with 
+  | Some {checkedOut = ch} -> ch
+  | None -> [] 
+;;
+
+(* Helper method to getExpectedBody *)
+let get_default_list (user: Orbit.userEntity option) : int list = 
+  match user with 
+  | Some {defaults = df} -> df
+  | None -> [] 
+;;
+
 let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directoryElement option =
   let expectedUser: Orbit.userEntity option = Orbit.get_user userId state in 
 
   let userRights: Orbit.user_rights = 
     match expectedUser with 
     | Some {Orbit.id = int; rights = permissions } -> permissions
-    | None -> None
+    | None -> NoRights
     in
+
+  let checked_out_list = get_checked_out_list expectedUser in
+
+  let default_list = get_default_list expectedUser in
 
   let expectedDirectory: Orbit.directoryEntity option = Orbit.get_directory dirId state in
   match expectedDirectory with 
@@ -89,15 +121,15 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
     version = directory.version; 
     __permissions = None ; 
     parent = directory.parent; 
-    is_checked_out = directory.is_checked_out; 
-    is_default = directory.is_default; }) 
+    is_checked_out = List.mem dirId checked_out_list ; 
+    is_default = List.mem dirId default_list; })
     
     else let permission_element = List.find (fun e -> fst e = userRights) directory.permissions in 
     let permission_object = 
     match permission_element with 
     | (ReadWrite,_)  -> Some {create = true; read = true; update = true; delete = true; }
     | (ReadOnly,_) -> Some {create = false; read = true; update = false; delete = false; }
-    | (None,_) -> Some {create = true; read = true; update = true; delete = true; } 
+    | (NoRights,_) -> Some {create = true; read = true; update = true; delete = true; } 
     | (Bypass,_) -> None 
     in 
   
@@ -108,15 +140,17 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
   version = directory.version; 
   __permissions = permission_object ; 
   parent = directory.parent; 
-  is_checked_out = directory.is_checked_out; 
-  is_default = directory.is_default; })
+  is_checked_out = List.mem dirId checked_out_list;
+  is_default = List.mem dirId default_list; })
 ;;
 
-let matchWithExpectedResult (bodyResult: directoryElement) (userId: int) (dirId: int) (state: Orbit.system) : bool =
+let matchWithExpectedResult (bodyResult: directoryElement option) (headerResult: Http_common.response) (userId: int) (dirId: int) (state: Orbit.system) : bool =
+  let expectedHeader = getExpectedHeader userId dirId state in 
   let expectedBody = getExpectedBody userId dirId state in
-
-  let checkHeader = Util.all_present expectedBody bodyResult in 
-  if checkHeader then true else false 
+  
+  let checkHeader = if (compare expectedHeader headerResult ) != 0 then false else true in
+  let checkBody = if (compare expectedBody bodyResult) != 0 then false else true in
+  if checkHeader && checkBody then true else false 
 
 
 let checkGetDirectory (userId: int) (dirId: int) (state: Orbit.system): 'a option =
@@ -125,9 +159,10 @@ let checkGetDirectory (userId: int) (dirId: int) (state: Orbit.system): 'a optio
   | Ok resp -> (
     match map_response resp with
     | { status_code = HttpOk; _} -> 
+      let headerRes = Http_common.map_response resp in
       let bodyRes = from_body resp.body in
-      matchBodyWithExpectedResult bodyRes userId state
-      Some(bodyRes)
+      let value = matchWithExpectedResult bodyRes headerRes userId dirId state in
+      Some(value);
     | _ -> None
     )
   | Error (_) -> None
