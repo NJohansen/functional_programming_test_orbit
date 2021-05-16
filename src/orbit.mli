@@ -46,3 +46,4 @@ val get_list_directory (userId: int) (state: system) : directoryEntity list
 val get_file (fileId: int) (state: system) : fileEntity option
 val get_list_files (userId: int) (state: system) : fileEntity list
 val get_directory (directoryId: int) (state: system) : directoryEntity option
+val get_file_path (fileId: int) (state: system): string option

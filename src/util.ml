@@ -12,3 +12,10 @@ let all_present (listOne: 'a list) (listTwo: 'a list) : bool =
       else false
   in check listOne listTwo
 ;;
+
+let rec part_of_list (list: 'a list) (lookFor: 'a) : bool =
+  match list with
+  | [] -> false
+  | f::r ->
+    if f = lookFor then true else part_of_list r lookFor
+;;
