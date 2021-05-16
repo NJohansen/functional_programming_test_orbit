@@ -19,3 +19,10 @@ let rec part_of_list (list: 'a list) (lookFor: 'a) : bool =
   | f::r ->
     if f = lookFor then true else part_of_list r lookFor
 ;;
+
+let rec delete_from_list (delete: 'a) (list: 'a list) (newList: 'a list) : 'a list=
+  match list with
+  | [] -> newList
+  | f::rest when f = delete -> newList @ rest
+  | f::rest -> delete_from_list delete rest (f::newList)
+;;
