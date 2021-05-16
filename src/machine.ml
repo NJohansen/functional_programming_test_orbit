@@ -10,7 +10,7 @@ struct
   type cmd   =
     | Get_File_List of int 
     | Get_File of int * int [@@deriving show { with_path = false }]
-    | Create_File of int * int * string * string  [@@deriving show { with_path = false }]
+    | Create_File of int * int * string * int  [@@deriving show { with_path = false }]
 
   let gen_cmd =
     Gen.oneof
