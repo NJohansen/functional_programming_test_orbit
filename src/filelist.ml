@@ -60,7 +60,7 @@ let getExpectedResultData (userId: int) (state: Orbit.system) : resultData =
   
   let expectedFiles: Orbit.fileEntity list = Orbit.get_list_files userId state in
   let expectedFileListElements: fileListElement list =
-    List.map (fun (file: Orbit.fileEntity) -> 
+    List.map (fun (file: Orbit.fileEntity) ->
       {id = file.id; name = file.name; parentId = file.parentId; version = file.version; versionChanged = 1; timestamp = (string_of_int file.msTimestamp)}
       ) expectedFiles in
 
