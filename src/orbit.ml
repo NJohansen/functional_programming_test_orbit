@@ -1,7 +1,7 @@
 open Ezcurl
 open Util
 
-type user_rights = Bypass | ReadWrite | ReadOnly | None [@@deriving show]
+type user_rights = Bypass | ReadWrite | ReadOnly | NoRights [@@deriving show]
 
 type userEntity = {
   id: int;
@@ -10,7 +10,7 @@ type userEntity = {
   defaults: int list;
 } [@@deriving show]
 
-type directory_permissions = Crud | Read | None [@@deriving show]
+type directory_permissions = Crud | Read | NoPermission [@@deriving show]
 
 type directoryEntity = {
   id: int;
@@ -42,18 +42,17 @@ type system = {
 } [@@deriving show]
 
 (* let get_file_list userId = *)
-
 let initState = 
   {
     users = 
       [{id = 0; rights = Bypass; checkedOut = []; defaults = []}; 
        {id = 100; rights = ReadWrite; checkedOut = [17; 18; 15]; defaults = [15]}; 
        {id = 101; rights = ReadOnly; checkedOut = [17; 18; 16]; defaults = [16]}; 
-       {id = 102; rights = None; checkedOut = [19]; defaults = [19]}];
+       {id = 102; rights = NoRights; checkedOut = [19]; defaults = [19]}];
     directories = 
       [{id = 1; name = "server-files"; path = "server-files/"; version = 1; permissions = []; parent = None};
        {id = 10; name = "Companies"; path = "server-files/Companies/"; version = 1; permissions = []; parent = Some 1};
-       {id = 13; name = "File importer"; path = "server-files/File importer/"; version = 1; permissions = []; parent = Some 1};
+       {id = 13; name = "File importer"; path = "server-files/File importer/"; version = 1; permissions = []; parent = Some 10};
        {id = 21; name = "Delete me too"; path = "server-files/File importer/Delete me too/"; version = 1; permissions = []; parent = Some 13};
        {id = 3; name = "Project deliverables"; path = "server-files/Project deliverables/"; version = 1; permissions = []; parent = Some 1};
        {id = 8; name = "Project emails"; path = "server-files/Project emails/"; version = 1; permissions = []; parent = Some 1};
@@ -61,7 +60,7 @@ let initState =
        {id = 17; name = "Project 1"; path = "server-files/Projects/Project 1/"; version = 1; permissions = [(ReadWrite, Crud); (ReadOnly, Read)]; parent = Some 2};
        {id = 18; name = "Project 2"; path = "server-files/Projects/Project 2/"; version = 1; permissions = [(ReadWrite, Crud); (ReadOnly, Read)]; parent = Some 2};
        {id = 4; name = "Project Templates"; path = "server-files/Project Templates/"; version = 1; permissions = []; parent = Some 1};
-       {id = 5; name = "Standard - 1"; path = "server-files/Project Templates/Standard - 1/"; version = 1; permissions = []; parent = Some 1};
+       {id = 5; name = "Standard - 1"; path = "server-files/Project Templates/Standard - 1/"; version = 1; permissions = []; parent = Some 4};
        {id = 6; name = "deliverables"; path = "server-files/Project Templates/Standard - 1/deliverables/"; version = 1; permissions = []; parent = Some 5};
        {id = 7; name = "explorer_root"; path = "server-files/Project Templates/Standard - 1/explorer_root/"; version = 1; permissions = []; parent = Some 5};
        {id = 12; name = "Sales Activities"; path = "server-files/Sales Activities/"; version = 1; permissions = []; parent = Some 1};
@@ -69,7 +68,7 @@ let initState =
        {id = 20; name = "Delete me"; path = "server-files/Shared files/Delete me/"; version = 1; permissions = []; parent = Some 9};
        {id = 11; name = "snapshots"; path = "server-files/snapshots/"; version = 1; permissions = []; parent = Some 1};
        {id = 14; name = "Users"; path = "server-files/Users/"; version = 1; permissions = []; parent = Some 1};
-       {id = 19; name = "none"; path = "server-files/Users/none/"; version = 1; permissions = [(None, Crud)]; parent = Some 14};
+       {id = 19; name = "none"; path = "server-files/Users/none/"; version = 1; permissions = [(NoRights, Crud)]; parent = Some 14};
        {id = 16; name = "ro"; path = "server-files/Users/ro/"; version = 1; permissions = [(ReadOnly, Crud)]; parent = Some 14};
        {id = 15; name = "rw"; path = "server-files/Users/rw/"; version = 1; permissions = [(ReadWrite, Crud)]; parent = Some 14};];
     files = 
@@ -77,6 +76,8 @@ let initState =
        {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; };
        {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; }];
   }
+
+let orbit_state: system ref = ref initState
 
 let get_user (userId: int) (state: system) : userEntity option =
   let rec find_user (id: int) (users: userEntity list) : userEntity option =
@@ -108,7 +109,7 @@ let get_list_directory (userId: int) (state: system) : directoryEntity list =
         | Bypass, (Bypass, _)::_ -> true
         | ReadWrite, (ReadWrite, _)::_ -> true
         | ReadOnly, (ReadOnly, _)::_ -> true
-        | None, (None, _)::_ -> true
+        | NoRights, (NoRights, _)::_ -> true
         | _, f::r -> can_read_directory user dirId r) in
 
     List.filter (fun (d: directoryEntity) -> can_read_directory user d.id d.permissions) state.directories
@@ -126,7 +127,7 @@ let get_list_directory_ignore_checkout (userId: int) (state: system) : directory
         | Bypass, (Bypass, _)::_ -> true
         | ReadWrite, (ReadWrite, _)::_ -> true
         | ReadOnly, (ReadOnly, _)::_ -> true
-        | None, (None, _)::_ -> true
+        | NoRights, (NoRights, _)::_ -> true
         | u, f::r -> can_read_directory u r ) in
 
     List.filter (fun d -> can_read_directory user.rights d.permissions) state.directories
@@ -208,4 +209,58 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
     let filesList = get_list_files_ignore_checkout userId state in
     let file = List.filter (fun f -> f.id = fileId) filesList in
     if List.length file = 1 then true else false
+;;
+
+let can_read_directory (userId: int) (dirId: int) (state: system): bool =
+  let userOption = get_user userId state in
+  match userOption with
+  | None -> false
+  | Some user ->
+    if user.rights = Bypass then true else
+    let dirList: directoryEntity list = get_list_directory_ignore_checkout userId state in
+    let dir = List.filter (fun (f: directoryEntity) -> f.id = dirId) dirList in
+    if List.length dir = 1 then true else false
+;;
+
+let has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
+  match parentDirIdOption with
+  | None -> false
+  | Some parentDirId ->
+    let userOption = get_user userId state in
+    let dirOption = get_directory parentDirId state in
+    (match userOption, dirOption with
+    | None, None | None, _ | _, None -> false
+    | Some user, Some dir ->
+
+      let rec crud_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) : bool =
+        if user.rights = Bypass then true else
+        (match userRight, permissions with
+        | _, []-> false
+        | Bypass, _ -> true
+        | ReadWrite, (ReadWrite, Crud)::_ -> true
+        | ReadOnly, (ReadOnly, Crud)::_ -> true
+        | NoRights, (NoRights, Crud)::_ -> true
+        | u, f::r -> crud_directory u r ) in
+
+      if crud_directory user.rights dir.permissions then true else false)
+;;
+
+let is_empty_dir (dirId: int) (state: system) : bool =
+  let rec checkDirs (dirs: directoryEntity list) : bool =
+    match dirs with
+    | [] -> true
+    | f::r ->
+      if f.parent = Some dirId 
+      then false
+      else checkDirs r in
+  if checkDirs state.directories = false then false else
+
+  let rec checkFiles (files: fileEntity list) : bool = 
+    match files with
+    | [] -> true
+    | f::r ->
+      if f.parentId = dirId 
+      then false
+      else checkFiles r in
+  if checkFiles state.files = false then false else true
 ;;
