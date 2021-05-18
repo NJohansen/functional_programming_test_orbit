@@ -55,13 +55,12 @@ struct
 
   let arb_cmd (st: state) = QCheck.make ~print:show_cmd (gen_cmd st)
 
-  (* let init_state  = {users = []; directories = []; files = []} *)
   let init_state = 
     (begin Orbit.orbit_do_modification := false end;
      begin Orbit.orbit_state := Orbit.initState end; Orbit.orbit_state )
   let next_state c st = match c with
-    | Get_File_List _ -> st
-    | Get_File _ -> st
+    | Get_File_List _ -> Orbit.next_state_done !st
+    | Get_File _ -> Orbit.next_state_done !st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
 
@@ -69,17 +68,18 @@ struct
   let cleanup _   = ()
   let run_cmd c st su = match c with
     | Get_File_List userId -> 
-      (Printf.printf "Get file list, user: %d \n" userId; Filelist.checkGetListOfFiles userId !su)
+      (Printf.printf "Get file list, user: %d \n" userId; Filelist.checkGetListOfFiles userId !st)
     | Get_File (userId, fileId) -> 
-      (Printf.printf "Get file, user: %d - file: %d \n" userId fileId; Getfile.checkGetFile userId fileId !su)
+      (Printf.printf "Get file, user: %d - file: %d \n" userId fileId; Getfile.checkGetFile userId fileId !st)
     | Delete_File (userId, fileId, version) -> 
-      (Printf.printf "Delete file, user: %d - file: %d - version: %d \n" userId fileId version; Deletefile.checkDeleteFile userId fileId version !su)      
+      (Printf.printf "Delete file, user: %d - file: %d - version: %d \n" userId fileId version; Deletefile.checkDeleteFile userId fileId version !st)      
     | Delete_Dir (userId, dirId, version) -> 
-      (Printf.printf "Delete dir, user: %d - dir: %d - version: %d \n" userId dirId version; Deletedir.checkDeleteDirectory userId dirId version !su)
+      (Printf.printf "Delete dir, user: %d - dir: %d - version: %d \n" userId dirId version; Deletedir.checkDeleteDirectory userId dirId version !st)
 
   let precond _ _ = true
 end
 module CT = QCSTM.Make(CConf)
 ;;
+(* QCheck_runner.set_seed 238825645;; *)
 QCheck_runner.run_tests ~verbose:true
   [CT.agree_test ~count:20 ~name:"orbit-model agreement"]

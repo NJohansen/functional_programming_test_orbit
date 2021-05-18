@@ -266,13 +266,17 @@ let is_empty_dir (dirId: int) (state: system) : bool =
   if checkFiles state.files = false then false else true
 ;;
 
+let printStateStatus s =
+  let _ = (Printf.printf "\n!!!!!!!!!!!!!!!! Users: %d - Dirs: %d - Files: %d\n" (List.length !orbit_state.users) (List.length !orbit_state.directories) (List.length !orbit_state.files); ()) in
+  ()
+
 let matchResults (expectedResult: unit -> Http_common.response) (requestResult: unit -> Http_common.response) (expectedBody: unit -> 'a option) (requestBody: unit -> 'a) : bool =
   let expectedResult = expectedResult () in
   let _ = (Printf.printf "Expected: %d" (Http_common.status_code_to_int expectedResult.status_code); ()) in
   let requestResult = requestResult () in
   let _ = (Printf.printf " - Actual: %d\n" (Http_common.status_code_to_int requestResult.status_code); ()) in
   if (compare expectedResult requestResult) != 0 
-  then (begin orbit_do_modification := false end; false ) else
+  then (printStateStatus (); begin orbit_do_modification := false end; false ) else
 
   if (requestResult.status_code != Http_common.HttpOk) 
   then (begin orbit_do_modification := false end; true ) else
@@ -280,8 +284,13 @@ let matchResults (expectedResult: unit -> Http_common.response) (requestResult: 
   let expectedBody = expectedBody () in
   let requestBody = requestBody () in
   match expectedBody with
-  | None -> (begin orbit_do_modification := false end; false )
+  | None -> (printStateStatus (); begin orbit_do_modification := false end; false )
   | Some expectedBody -> if (compare expectedBody requestBody) != 0 
-    then (begin orbit_do_modification := false end; false )
-    else (Printf.printf "!!! Should change state !!!!\n"; begin orbit_do_modification := true end; true )
+    then (printStateStatus (); begin orbit_do_modification := false end; false )
+    else (Printf.printf "\n!!!!!!!!!!!!!!!! CAN CHANGE "; printStateStatus ();  begin orbit_do_modification := true end; true )
 ;;
+
+let next_state_done (newState: system) : system ref =
+    begin orbit_do_modification := false end; 
+    begin orbit_state := newState end; 
+    orbit_state
