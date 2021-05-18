@@ -268,9 +268,9 @@ let is_empty_dir (dirId: int) (state: system) : bool =
 
 let matchResults (expectedResult: unit -> Http_common.response) (requestResult: unit -> Http_common.response) (expectedBody: unit -> 'a option) (requestBody: unit -> 'a) : bool =
   let expectedResult = expectedResult () in
-  let ss = (Printf.printf "Expected: %d" (Http_common.status_code_to_int expectedResult.status_code); ()) in
+  let _ = (Printf.printf "Expected: %d" (Http_common.status_code_to_int expectedResult.status_code); ()) in
   let requestResult = requestResult () in
-  let sss = (Printf.printf " - Actual: %d\n" (Http_common.status_code_to_int requestResult.status_code); ()) in
+  let _ = (Printf.printf " - Actual: %d\n" (Http_common.status_code_to_int requestResult.status_code); ()) in
   if (compare expectedResult requestResult) != 0 
   then (begin orbit_do_modification := false end; false ) else
 
@@ -283,5 +283,5 @@ let matchResults (expectedResult: unit -> Http_common.response) (requestResult: 
   | None -> (begin orbit_do_modification := false end; false )
   | Some expectedBody -> if (compare expectedBody requestBody) != 0 
     then (begin orbit_do_modification := false end; false )
-    else (begin orbit_do_modification := true end; true )
+    else (Printf.printf "!!! Should change state !!!!\n"; begin orbit_do_modification := true end; true )
 ;;
