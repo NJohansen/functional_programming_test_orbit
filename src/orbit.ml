@@ -269,7 +269,8 @@ let create_file (state: system) (userId: int) (parentId: int) (name: string) (ti
     directoryIdCounter = state.directoryIdCounter;
     fileIdCounter=  updateStateFileIdCounter;
   } in
-  updatedState 
+  begin orbit_state := updatedState end; 
+  updatedState
   
 let can_read_directory (userId: int) (dirId: int) (state: system): bool =
   let userOption = get_user userId state in

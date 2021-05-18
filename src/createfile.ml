@@ -25,40 +25,21 @@ let from_body body =
     timestamp = timestamp;
   }
 
-let getExpectedResultData (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): resultData =
-  let updatedState = Orbit.create_file state userId parentId fileTitle timestamp in
-  let newFile = Orbit.get_file updatedState.fileIdCounter updatedState in 
-  let file: Orbit.fileEntity = match newFile with 
-  | None -> { (*I have no idea what to do in this case *)
-      id = 0;
-      name =  "";
-      size = 0;
-      mimetype = "";
-      parentId = 0;
-      version =  0;
-      createdAt = "";
-      modifiedAt = "";
-      msTimestamp = 0;
-      path = "";
-      snapshotsEnabled = false;
-  } 
-  | Some file -> file 
-  in
-  let expectedFileId = file.id in 
-  let expectedTimestamp = file.msTimestamp in
-  let expectedFileVersion = file.version in 
-  let expectedFileName = file.name in 
-  { 
-    id = expectedFileId;
-    version = expectedFileVersion;
-    name = expectedFileName;
-    timestamp = expectedTimestamp;
-  }
+let getExpectedResultBody (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): resultData =
 
+let getExpectedResultHeaders  (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): Http_common.response = 
+  
 
-let matchBodyWithExpectedResult (bodyResult: resultData) (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): bool =
-  let expectedData = getExpectedResultData userId parentId fileTitle timestamp state in
-  if (compare expectedData  bodyResult) != 0 then false else true
+let matchResults (bodyResult: resultData) (requestResult: Http_common.response) (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): bool =
+  let expectedResultHeaders = getExpectedResultHeaders userId dirId version state in
+  if (compare expectedResultHeaders requestResult) != 0 then false else
+
+  if (requestResult.status_code != Http_common.HttpOk) then true else
+  let body = from_body body in
+  let expectedBodyOption = getExpectedResultBody  in
+  match expectedBodyOption with
+  | None -> false
+  | Some expectedBody -> if (compare expectedBody body) != 0 then false else true
 
 let checkCreateFile (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): bool =
   let url = Printf.sprintf ("http://localhost:8085/file?userId=%d&parentId=%d&name=%s&timestamp=%d") userId parentId fileTitle timestamp in
