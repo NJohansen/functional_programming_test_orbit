@@ -66,7 +66,7 @@ let checkCreateFile (userId: int) (parentId: int) (fileTitle: string) (timestamp
 ;;
 
 (* Creates a file in a specified directory *)
-let create_file (state: Orbit.system ref) (userId: int) (parentId: int) (name: string) (timestamp: int): system ref = 
+let createFileUpdateState (state: Orbit.system ref) (userId: int) (parentId: int) (name: string) (timestamp: int): system ref = 
   if !Orbit.orbit_do_modification = false then state else
 
   let fileCounter = !state.fileIdCounter in
