@@ -2,7 +2,6 @@ open Ezcurl
 open Yojson
 open Yojson.Basic.Util
 open Http_common
-open Util
 open Orbit
 
 type resultData = {
@@ -44,30 +43,21 @@ let getExpectedResultHeaders (userId: int) (fileId: int) (version: int) (state: 
     Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk
 ;;
 
-let matchResults (userId: int) (fileId: int) (version: int) (state: Orbit.system) (body: string) (requestResult: Http_common.response): bool =
-  let expectedResultHeaders = getExpectedResultHeaders userId fileId version state in
-  if (compare expectedResultHeaders requestResult) != 0 then (begin Orbit.orbit_do_modification := false end; false ) else
-
-  if (requestResult.status_code != Http_common.HttpOk) then (begin Orbit.orbit_do_modification := false end; true ) else
-  let body = from_body body in
-  let expectedBodyOption = getExpectedResultBody fileId state in
-  match expectedBodyOption with
-  | None -> (begin Orbit.orbit_do_modification := false end; false )
-  | Some expectedBody -> if (compare expectedBody body) != 0 
-    then (begin Orbit.orbit_do_modification := false end; false )
-    else (begin Orbit.orbit_do_modification := true end; true )
-
 let checkDeleteFile (userId: int) (fileId: int) (version: int) (state: Orbit.system) : bool =
   let url = Printf.sprintf "http://localhost:8085/file?userId=%d&id=%d&version=%d" userId fileId version in
   match Ezcurl.http ~url: url ~meth: DELETE () with
   | Ok resp -> (
-    let requestResult = Http_common.map_response resp in
-    (matchResults userId fileId version state resp.body requestResult)
+    Orbit.matchResults 
+      (fun _ -> getExpectedResultHeaders userId fileId version state) 
+      (fun _ -> Http_common.map_response resp) 
+      (fun _ -> getExpectedResultBody fileId state) 
+      (fun _ -> from_body resp.body)    
     )
   | Error (_) -> false
 
 let deleteFileUpdateState (userId: int) (fileId: int) (version: int) (state: Orbit.system ref) : Orbit.system ref =
   if !Orbit.orbit_do_modification = false then state else
+  let _ = (Printf.printf "\n!!!!!!!!! DELETE FILE: %d  version: %d" fileId version; ()) in
 
   let fileToDeleteOption = Orbit.get_file fileId !state in
   match fileToDeleteOption with
@@ -85,6 +75,5 @@ let deleteFileUpdateState (userId: int) (fileId: int) (version: int) (state: Orb
       files = newFileList;
     } in
 
-    begin Orbit.orbit_state := newState end; 
-    Orbit.orbit_state
+    Orbit.next_state_done newState
 ;;

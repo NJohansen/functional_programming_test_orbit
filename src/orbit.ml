@@ -32,6 +32,7 @@ type fileEntity = {
   msTimestamp: int;
   path: string;
   snapshotsEnabled: bool;
+  content: string;
 } [@@deriving show]
 
 type system = {
@@ -73,9 +74,9 @@ let initState =
        {id = 16; name = "ro"; path = "server-files/Users/ro/"; version = 1; permissions = [(ReadOnly, Crud)]; parent = Some 14};
        {id = 15; name = "rw"; path = "server-files/Users/rw/"; version = 1; permissions = [(ReadWrite, Crud)]; parent = Some 14};];
     files = 
-      [{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; };
-       {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; };
-       {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; }];
+      [{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; content = "INTRO.txt located at /Users/Shared files/INTRO.txt\n USER_ID=100 (rw) can read and write content to the file, but USER_ID=101 (ro) can only read it. USER_ID=102 (none) has no access it."};
+       {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/rw/README.txt\nOnly USER_ID=100 can access it.\n"};
+       {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/ro/README.txt\nOnly USER_ID=101 can access it.\n"}];
     directoryIdCounter = 21;
     fileIdCounter = 4;
   }
@@ -338,3 +339,31 @@ let file_exists (dirId: int) (name: string) (state: system): bool =
       if f.name = file_name && f.parentId = directoryId then true 
       else file_name_exists r file_name directoryId in
   if file_name_exists state.files name dirId = false then false else true
+let printStateStatus s =
+  let _ = (Printf.printf "\n!!!!!!!!!!!!!!!! Users: %d - Dirs: %d - Files: %d\n" (List.length !orbit_state.users) (List.length !orbit_state.directories) (List.length !orbit_state.files); ()) in
+  ()
+
+let matchResults (expectedResult: unit -> Http_common.response) (requestResult: unit -> Http_common.response) (expectedBody: unit -> 'a option) (requestBody: unit -> 'a) : bool =
+  let expectedResult = expectedResult () in
+  let _ = (Printf.printf "Expected: %d" (Http_common.status_code_to_int expectedResult.status_code); ()) in
+  let requestResult = requestResult () in
+  let _ = (Printf.printf " - Actual: %d\n" (Http_common.status_code_to_int requestResult.status_code); ()) in
+  if (compare expectedResult requestResult) != 0 
+  then (printStateStatus (); begin orbit_do_modification := false end; false ) else
+
+  if (requestResult.status_code != Http_common.HttpOk) 
+  then (begin orbit_do_modification := false end; true ) else
+
+  let expectedBody = expectedBody () in
+  let requestBody = requestBody () in
+  match expectedBody with
+  | None -> (printStateStatus (); begin orbit_do_modification := false end; false )
+  | Some expectedBody -> if (compare expectedBody requestBody) != 0 
+    then (printStateStatus (); begin orbit_do_modification := false end; false )
+    else (Printf.printf "\n!!!!!!!!!!!!!!!! CAN CHANGE "; printStateStatus ();  begin orbit_do_modification := true end; true )
+;;
+
+let next_state_done (newState: system) : system ref =
+    begin orbit_do_modification := false end; 
+    begin orbit_state := newState end; 
+    orbit_state
