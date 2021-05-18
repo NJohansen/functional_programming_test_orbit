@@ -104,8 +104,10 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
     | None -> NoRights
     in
 
+  (* Get all ID from checked out dirs *)
   let checked_out_list = get_checked_out_list expectedUser in
-
+  
+  (* Get all ID from default dirs *)
   let default_list = get_default_list expectedUser in
 
   let expectedDirectory: Orbit.directoryEntity option = Orbit.get_directory dirId state in
