@@ -26,7 +26,16 @@ let from_body body =
   }
 
 let getExpectedResultBody (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): resultData option = 
-  None
+    let msTimestamp = (timestamp * 10000000 + 621355968000000000) in
+    let id = (state.fileIdCounter + 1) in 
+    let version = 1 in 
+    let name = fileTitle in
+    Some {
+    id = id;
+    version = version;
+    name = name;
+    timestamp = msTimestamp;
+  }
 
 let getExpectedResultHeaders  (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): Http_common.response = 
   let dirOption: Orbit.directoryEntity option = Orbit.get_directory parentId state in
@@ -43,23 +52,54 @@ let getExpectedResultHeaders  (userId: int) (parentId: int) (fileTitle: string) 
     Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk
 ;;
 
-let matchResults (body: string) (requestResult: Http_common.response) (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): bool =
-  let expectedResultHeaders = getExpectedResultHeaders userId parentId fileTitle timestamp state in
-  if (compare expectedResultHeaders requestResult) != 0 then false else
-
-  if (requestResult.status_code != Http_common.HttpOk) then true else
-  let body = from_body body in
-  let expectedBodyOption = getExpectedResultBody userId parentId fileTitle timestamp state  in
-  match expectedBodyOption with
-  | None -> false
-  | Some expectedBody -> if (compare expectedBody body) != 0 then false else true
-
 let checkCreateFile (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): bool =
   let url = Printf.sprintf ("http://localhost:8085/file?userId=%d&parentId=%d&name=%s&timestamp=%d") userId parentId fileTitle timestamp in
   match Ezcurl.post ~url: url ~params: [] () with
   | Ok resp -> (
-    let requestResult = Http_common.map_response resp in
-    (matchResults resp.body requestResult userId parentId fileTitle timestamp state )
+    Orbit.matchResults 
+      (fun _ -> getExpectedResultHeaders userId parentId fileTitle timestamp state) 
+      (fun _ -> Http_common.map_response resp) 
+      (fun _ -> getExpectedResultBody userId parentId fileTitle timestamp state) 
+      (fun _ -> from_body resp.body)    
     )
   | Error (_) -> false
 ;;
+
+(* Creates a file in a specified directory *)
+let create_file (state: Orbit.system ref) (userId: int) (parentId: int) (name: string) (timestamp: int): system ref = 
+  if !Orbit.orbit_do_modification = false then state else
+
+  let fileCounter = !state.fileIdCounter in
+  let fileId = fileCounter + 1 in 
+  let msTimestamp = (timestamp * 10000000 + 621355968000000000) in 
+  let createdAt = Util.create_ISO_timestamp () in 
+  let dir = get_directory parentId !state in 
+  let path = 
+      match dir with 
+      |None -> "" 
+      |Some dir -> dir.path
+      in
+  let newFile = {
+      id = fileId;
+      name = name;
+      size = 0;
+      mimetype = "text/plain"; (*Not sure what to do here, there's mimetype for EVERY filetype. All of them. Do we really want to model that?*)
+      parentId = parentId;
+      version = 1;
+      createdAt = createdAt;
+      modifiedAt = createdAt;
+      msTimestamp = msTimestamp; 
+      path = path;
+      snapshotsEnabled = false;
+      content = "";
+    } in
+  let newFileList = newFile::!state.files in  
+  let updateStateFileIdCounter = fileId in
+  let updatedState = { 
+    users = !state.users;
+    directories = !state.directories;
+    files = newFileList;
+    directoryIdCounter = !state.directoryIdCounter;
+    fileIdCounter=  updateStateFileIdCounter;
+  } in
+  Orbit.next_state_done updatedState

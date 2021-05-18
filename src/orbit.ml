@@ -236,45 +236,6 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
     let file = List.filter (fun f -> f.id = fileId) filesList in
     if List.length file = 1 then true else false
 ;;
-
-(* Creates a file in a specified directory *)
-(* We don't use the timestamp parameter, and it doesn't seem like Orbit does either? *)
-let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: int): system ref = 
-  if !orbit_do_modification = false then ref state else
-
-  let fileCounter = state.fileIdCounter in
-  let fileId = fileCounter + 1 in 
-  let createdAt = Util.create_ISO_timestamp () in 
-  let dir = get_directory parentId state in 
-  let path = 
-      match dir with 
-      |None -> "" 
-      |Some dir -> dir.path
-      in
-  let newFile = {
-      id = fileId;
-      name = name;
-      size = 0;
-      mimetype = "text/plain"; (*Not sure what to do here, there's mimetype for EVERY filetype. All of them. Do we really want to model that?*)
-      parentId = parentId;
-      version = 1;
-      createdAt = createdAt;
-      modifiedAt = createdAt;
-      msTimestamp = 637479675580000000; (* Seems to be what the Orbit API sets the msTimestamp to always *)
-      path = path;
-      snapshotsEnabled = false;
-    } in
-  let newFileList = newFile::state.files in  
-  let updateStateFileIdCounter = fileId in
-  let updatedState = { 
-    users = state.users;
-    directories = state.directories;
-    files = newFileList;
-    directoryIdCounter = state.directoryIdCounter;
-    fileIdCounter=  updateStateFileIdCounter;
-  } in
-  begin orbit_state := updatedState end; 
-  ref updatedState
   
 let can_read_directory (userId: int) (dirId: int) (state: system): bool =
   let userOption = get_user userId state in
