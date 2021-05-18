@@ -146,26 +146,26 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
   is_default = List.mem dirId default_list; })
 ;;
 
-let matchWithExpectedResult (bodyResult: directoryElement option) (headerResult: Http_common.response) (userId: int) (dirId: int) (state: Orbit.system) : bool =
+(* let matchWithExpectedResult (bodyResult: directoryElement option) (headerResult: Http_common.response) (userId: int) (dirId: int) (state: Orbit.system) : bool =
   let expectedHeader = getExpectedHeader userId dirId state in 
   let expectedBody = getExpectedBody userId dirId state in
   
   let checkHeader = if (compare expectedHeader headerResult ) != 0 then false else true in
   let checkBody = if (compare expectedBody bodyResult) != 0 then false else true in
-  if checkHeader && checkBody then true else false 
+  if checkHeader && checkBody then true else false  *)
 
 
-let checkGetDirectory (userId: int) (dirId: int) (state: Orbit.system): 'a option =
+let checkGetDirectory (userId: int) (dirId: int) (state: Orbit.system): bool =
   let url = "http://localhost:8085/api/directories?userId=" ^ (string_of_int userId) ^ "&id=" ^ (string_of_int dirId) in
   match Ezcurl.get ~url: url () with
   | Ok resp -> (
     match map_response resp with
     | { status_code = HttpOk; _} -> 
-      let headerRes = Http_common.map_response resp in
+      let requestResult = Http_common.map_response resp in
       let bodyRes = from_body resp.body in
-      let value = matchWithExpectedResult bodyRes headerRes userId dirId state in
-      Some(value);
-    | _ -> None
+      let bool_value = matchWithExpectedResult bodyRes headerRes userId dirId state in
+      bool_value
+    | _ -> false
     )
-  | Error (_) -> None
+  | Error (_) -> false
 ;;
