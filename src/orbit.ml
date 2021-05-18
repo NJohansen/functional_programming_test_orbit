@@ -1,4 +1,3 @@
-open Ezcurl
 open Util
 
 type user_rights = Bypass | ReadWrite | ReadOnly | NoRights [@@deriving show]
@@ -162,6 +161,7 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
     match_parent_id list []
 ;;
 
+(*
 (* Returns the list of directories that the user has write access to *)
 let get_write_access_directories (userId: int) (state: system) : directoryEntity list =
   let userOption = get_user userId state in
@@ -180,7 +180,7 @@ let get_write_access_directories (userId: int) (state: system) : directoryEntity
         | _, f::r -> can_write_directory user dirId r) in
 
     List.filter (fun (d: directoryEntity) -> can_write_directory user d.id d.permissions) state.directories
-;;
+;; *)
 
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
   let availableDirectories = get_list_directory_ignore_checkout userId state in
@@ -238,7 +238,9 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
 
 (* Creates a file in a specified directory *)
 (* We don't use the timestamp parameter, and it doesn't seem like Orbit does either? *)
-let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: int): system = 
+let create_file (state: system) (userId: int) (parentId: int) (name: string) (timestamp: int): system ref = 
+  if !orbit_do_modification = false then ref state else
+
   let fileCounter = state.fileIdCounter in
   let fileId = fileCounter + 1 in 
   let createdAt = Util.create_ISO_timestamp () in 
@@ -271,7 +273,7 @@ let create_file (state: system) (userId: int) (parentId: int) (name: string) (ti
     fileIdCounter=  updateStateFileIdCounter;
   } in
   begin orbit_state := updatedState end; 
-  updatedState
+  ref updatedState
   
 let can_read_directory (userId: int) (dirId: int) (state: system): bool =
   let userOption = get_user userId state in
@@ -326,3 +328,13 @@ let is_empty_dir (dirId: int) (state: system) : bool =
       else checkFiles r in
   if checkFiles state.files = false then false else true
 ;;
+
+(* Checks if a given filename exists in a specific directory *)
+let file_exists (dirId: int) (name: string) (state: system): bool = 
+  let rec file_name_exists (files: fileEntity list) (file_name: string) (directoryId: int): bool = 
+    match files with 
+    | [] -> false 
+    | f::r -> 
+      if f.name = file_name && f.parentId = directoryId then true 
+      else file_name_exists r file_name directoryId in
+  if file_name_exists state.files name dirId = false then false else true
