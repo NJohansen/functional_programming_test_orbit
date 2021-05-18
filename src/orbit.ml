@@ -54,7 +54,7 @@ let initState =
     directories = 
       [{id = 1; name = "server-files"; path = "server-files/"; version = 1; permissions = []; parent = None};
        {id = 10; name = "Companies"; path = "server-files/Companies/"; version = 1; permissions = []; parent = Some 1};
-       {id = 13; name = "File importer"; path = "server-files/File importer/"; version = 1; permissions = []; parent = Some 10};
+       {id = 13; name = "File importer"; path = "server-files/File importer/"; version = 1; permissions = []; parent = Some 1};
        {id = 21; name = "Delete me too"; path = "server-files/File importer/Delete me too/"; version = 1; permissions = []; parent = Some 13};
        {id = 3; name = "Project deliverables"; path = "server-files/Project deliverables/"; version = 1; permissions = []; parent = Some 1};
        {id = 8; name = "Project emails"; path = "server-files/Project emails/"; version = 1; permissions = []; parent = Some 1};
@@ -82,6 +82,7 @@ let initState =
   }
 
 let orbit_state: system ref = ref initState
+let orbit_do_modification: bool ref = ref false
 
 let get_user (userId: int) (state: system) : userEntity option =
   let rec find_user (id: int) (users: userEntity list) : userEntity option =

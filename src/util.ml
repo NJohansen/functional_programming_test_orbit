@@ -34,10 +34,9 @@ let create_ISO_timestamp () =
   let iso_date = iso_of_tm tm_date in 
   iso_date
 
-
-let rec delete_from_list (delete: 'a) (list: 'a list) (newList: 'a list) : 'a list=
+let rec delete_from_list (delete: 'a) (list: 'a list) (newList: 'a list) : 'a list =
   match list with
   | [] -> newList
   | f::rest when f = delete -> newList @ rest
-  | f::rest -> delete_from_list delete rest (f::newList)
+  | f::rest -> delete_from_list delete rest (newList @ [f])
 ;;

@@ -17,8 +17,14 @@ docker run --rm -p8085:8085 -eCLICOLOR_FORCE=1 cr.orbit.dev/sdu/filesync-server:
 
 #mod_use "filelist.ml";;
 #mod_use "getfile.ml";;
+#mod_use "deletedir.ml";;
 
 #require "ppx_deriving.show";;  is breaks orbit.ml
 
 #use  "machine.ml";;
+```
+
+```
+make
+./machine.native
 ```
