@@ -86,8 +86,11 @@ let checkFileMeta (userId: int) (fileId: int) (state: Orbit.system) =
     let url = Printf.sprintf "http://localhost:8085/file/meta?userId=%d&id=%d" userId fileId in
     match Ezcurl.get ~url: url () with
     | Ok resp -> (
-        let requestResult =  Http_common.map_response resp in 
-        (matchResults userId fileId state  resp.body requestResult)        
+        Orbit.matchResults 
+        (fun _ -> getExpectedResultHeaders userId fileId state) 
+        (fun _ -> Http_common.map_response resp) 
+        (fun _ -> getExpectedResultData userId fileId state) 
+        (fun _ -> from_body resp.body)         
     )
     | Error (_) -> false
 ;;
