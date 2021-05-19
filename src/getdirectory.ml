@@ -39,6 +39,19 @@ let map_permissionValues permissions : directory_permissions option =
 
 let from_body body =
   let json = Yojson.Basic.from_string body in
+  
+  let parent = json |> member "parent" in 
+  
+  (* Handle if it is there is no parent which means it is the root folder *)
+  if parent == `Null then 
+    {id = (json |> member "id" |> to_int); 
+  name = (json |> member "name" |> to_string);
+  path = (json |> member "path" |> to_string); 
+  version = (json |> member "version" |> to_int);
+  __permissions = None;
+  parent = None;
+  is_checked_out = (json |> member "is_checked_out" |> to_bool);
+  is_default = (json |> member "is_default" |> to_bool)} else
 
   let parentObject =  json |> member "parent" |> to_assoc in 
   match List.hd parentObject with 
@@ -126,10 +139,11 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
     is_checked_out = List.mem dirId checked_out_list ; 
     is_default = List.mem dirId default_list; })
     
-    else let permission_element = List.find (fun e -> fst e = userRights) directory.permissions in 
+    else let permission_element = try List.find (fun e -> fst e = userRights) directory.permissions with Not_found -> (Bypass,Crud) in (* FIX THIS *)
     let permission_object = 
     match permission_element with 
     | (ReadWrite,_)  -> Some {create = true; read = true; update = true; delete = true; }
+    | (ReadOnly,Crud) -> Some {create = true; read = true; update = true; delete = true; }
     | (ReadOnly,_) -> Some {create = false; read = true; update = false; delete = false; }
     | (NoRights,_) -> Some {create = true; read = true; update = true; delete = true; } 
     | (Bypass,_) -> None 
