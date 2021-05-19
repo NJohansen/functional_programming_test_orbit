@@ -62,9 +62,10 @@ struct
     (begin Orbit.orbit_do_modification := false end;
      begin Orbit.orbit_state := Orbit.initState end; Orbit.orbit_state )
   let next_state c st = match c with
-    | Get_directory _ -> Orbit.next_state_done !st
     | Get_File_List _ -> Orbit.next_state_done !st
+    | Get_directory _ -> Orbit.next_state_done !st
     | Get_File _ -> Orbit.next_state_done !st
+    | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
 
   let init_sut () = (Printf.printf "----------------\n"; Orbit.orbit_state)

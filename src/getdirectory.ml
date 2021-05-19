@@ -18,7 +18,7 @@ type directoryElement = {
   path: string;
   version: int;
   __permissions: directory_permissions option;
-  parent: int option; (**Maybe a problem? *)
+  parent: int option; 
   is_checked_out: bool;
   is_default: bool;
 } [@@deriving show]
@@ -48,26 +48,26 @@ let from_body body =
   
   (* Handle if it is the Bypass user *)
   if any_permissions == `Null then  
-  Some({id = (json |> member "id" |> to_int); 
+  {id = (json |> member "id" |> to_int); 
   name = (json |> member "name" |> to_string);
   path = (json |> member "path" |> to_string); 
   version = (json |> member "version" |> to_int);
   __permissions = None;
   parent = parentId;
   is_checked_out = (json |> member "is_checked_out" |> to_bool);
-  is_default = (json |> member "is_default" |> to_bool)})
+  is_default = (json |> member "is_default" |> to_bool)}
 
   (* If not bypass user *)
   else let permissionObject = json |> member "__permissions" |> to_assoc in 
   let permissionList = map_permissionValues permissionObject in 
-  Some({id = (json |> member "id" |> to_int); 
+  {id = (json |> member "id" |> to_int); 
   name = (json |> member "name" |> to_string);
   path = (json |> member "path" |> to_string); 
   version = (json |> member "version" |> to_int);
   __permissions = permissionList;
   parent = parentId;
   is_checked_out = (json |> member "is_checked_out" |> to_bool);
-  is_default = (json |> member "is_default" |> to_bool)})
+  is_default = (json |> member "is_default" |> to_bool)}
 ;;
 
 let getExpectedHeader (userId: int) (dirId: int) (state: Orbit.system) : Http_common.response =
@@ -146,26 +146,15 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
   is_default = List.mem dirId default_list; })
 ;;
 
-(* let matchWithExpectedResult (bodyResult: directoryElement option) (headerResult: Http_common.response) (userId: int) (dirId: int) (state: Orbit.system) : bool =
-  let expectedHeader = getExpectedHeader userId dirId state in 
-  let expectedBody = getExpectedBody userId dirId state in
-  
-  let checkHeader = if (compare expectedHeader headerResult ) != 0 then false else true in
-  let checkBody = if (compare expectedBody bodyResult) != 0 then false else true in
-  if checkHeader && checkBody then true else false  *)
-
-
 let checkGetDirectory (userId: int) (dirId: int) (state: Orbit.system): bool =
   let url = "http://localhost:8085/api/directories?userId=" ^ (string_of_int userId) ^ "&id=" ^ (string_of_int dirId) in
   match Ezcurl.get ~url: url () with
-  | Ok resp -> (
-    match map_response resp with
-    | { status_code = HttpOk; _} -> 
-      let requestResult = Http_common.map_response resp in
-      let bodyRes = from_body resp.body in
-      let bool_value = matchWithExpectedResult bodyRes headerRes userId dirId state in
-      bool_value
-    | _ -> false
+    | Ok resp -> (
+    Orbit.matchResults 
+      (fun _ -> getExpectedHeader userId dirId state) 
+      (fun _ -> Http_common.map_response resp) 
+      (fun _ -> getExpectedBody userId dirId state) 
+      (fun _ -> from_body resp.body)         
     )
   | Error (_) -> false
 ;;
