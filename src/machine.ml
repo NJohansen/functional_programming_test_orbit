@@ -12,7 +12,7 @@ struct
   type sut   = Orbit.system ref
   type cmd   =
     | Get_File_List of int 
-    | Create_File of int * int * string * int  
+    | Create_File of int * int * string * int32  
     | Get_File of int * int 
     | Delete_File of int * int * int
     | Delete_Dir of int * int * int [@@deriving show { with_path = false }]
@@ -55,7 +55,7 @@ struct
 
     let timestamp_gen =
       Gen.oneof [
-        Gen.int;
+        Gen.ui32;
       ] in
 
       let create_user_parameter_gen = 
@@ -67,7 +67,7 @@ struct
         Gen.map2 (fun userId fileId -> Get_File (userId, fileId)) user_id_gen file_id_gen;
         Gen.map3 (fun userId fileId version -> Delete_File (userId, fileId, version)) user_id_gen file_id_gen version_gen;
         Gen.map3 (fun userId dirId version -> Delete_Dir (userId, dirId, version)) user_id_gen dir_id_gen version_gen;
-        Gen.map (fun (userId, dirId, name, timestamp) ->  Create_File (userId, dirId, name, timestamp)) create_user_parameter_gen]
+        Gen.map (fun (userId, dirId, name, timestamp) ->  Create_File (userId, dirId, name,  timestamp)) create_user_parameter_gen]
 
   let arb_cmd (st: state) = QCheck.make ~print:show_cmd (gen_cmd st)
 
@@ -79,7 +79,7 @@ struct
     | Get_File _ -> Orbit.next_state_done !st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
-    | Create_File (userId, dirId, name, timestamp) -> Createfile.createFileUpdateState st userId dirId name timestamp 
+    | Create_File (userId, dirId, name, timestamp) -> Createfile.createFileUpdateState st userId dirId name (Int32.to_int timestamp) 
 
   let init_sut () = (Printf.printf "----------------\n"; Orbit.orbit_state)
   let cleanup _   = ()
@@ -93,12 +93,12 @@ struct
     | Delete_Dir (userId, dirId, version) -> 
       (Printf.printf "Delete dir, user: %d - dir: %d - version: %d \n" userId dirId version; Deletedir.checkDeleteDirectory userId dirId version !st)
     | Create_File (userId, dirId, name, timestamp) -> 
-      (Printf.printf "Create file, user: %d - dir: %d - name: %s - timestamp: %d \n" userId dirId name timestamp; Createfile.checkCreateFile userId dirId name timestamp !st)
+      (Printf.printf "Create file, user: %d - dir: %d - name: %s - timestamp: %ld \n" userId dirId name timestamp; Createfile.checkCreateFile userId dirId name (Int32.to_int timestamp) !st)
 
   let precond _ _ = true
 end
 module CT = QCSTM.Make(CConf)
 ;;
-(* QCheck_runner.set_seed 238825645;; *)
+QCheck_runner.set_seed 181376244;; 
 QCheck_runner.run_tests ~verbose:true
   [CT.agree_test ~count:20 ~name:"orbit-model agreement"]
