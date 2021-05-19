@@ -50,7 +50,7 @@ struct
 
     let name_gen =
       Gen.oneof [
-        Gen.string;
+        Gen.string_readable;
       ] in
 
     let timestamp_gen =
