@@ -243,9 +243,29 @@ let can_read_directory (userId: int) (dirId: int) (state: system): bool =
   | None -> false
   | Some user ->
     if user.rights = Bypass then true else
-    let dirList: directoryEntity list = get_list_directory_ignore_checkout userId state in
-    let dir = List.filter (fun (f: directoryEntity) -> f.id = dirId) dirList in
-    if List.length dir = 1 then true else false
+
+    let findChilds parentId = List.filter (fun child -> child.parent = (Some parentId)) state.directories in
+
+    let read_rights directory = List.length (List.filter (fun rights -> (rights = (user.rights, Crud)) || (rights = (user.rights, Read))) directory.permissions) > 0 in
+
+    let rec check_for_read_rights (dir: directoryEntity) (childs: directoryEntity list) : bool =
+      if read_rights dir then true else
+      List.length (
+        List.filter (fun (child: directoryEntity) ->
+          if read_rights child then true else
+          (match findChilds child.id with
+          | [] -> false
+          | f::r ->
+            if read_rights f
+            then true
+            else check_for_read_rights f (findChilds f.id))
+      ) childs) > 0 in
+
+    let dirOption = get_directory dirId state in
+    (match dirOption with
+    | None -> false
+    | Some dir -> check_for_read_rights dir (findChilds dirId)
+    )
 ;;
 
 let has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
