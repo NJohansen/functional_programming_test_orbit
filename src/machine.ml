@@ -17,9 +17,9 @@ struct
     | Get_File_List of int 
     | Get_File of int * int
     | Get_Version of int * string 
+    | Create_File of int * int * string * int32 
     | Delete_File of int * int * int
-    | Delete_Dir of int * int * int [@@deriving show { with_path = false }]
-    | Create_File of int * int * string * int32  
+    | Delete_Dir of int * int * int [@@deriving show { with_path = false }] 
 
   let gen_cmd (st: state) =
     let user_id_gen =
@@ -52,15 +52,24 @@ struct
         Gen.small_signed_int;
       ] in
 
+    let char_gen = 
+      let char_list: char list = ['a';'b';'c';'d';'e';'f';'g';'h';'i';'j';'k';'l';'m';'n';'o';'p';'q';'r';'s';'t';'u';'v';'x';'y';'z';] in 
+      Gen.oneofl char_list
+      in
+    let forbidden_char_gen = 
+      let forbidden_name_characters: char list = ['/'; ':'; '*'; '?'; '\"'; '<'; '>';] in (*Excluding backslash to avoid any string interpretation issues *)
+      Gen.oneofl forbidden_name_characters
+      in
+    let name_string_gen = 
+      Gen.frequency[(95, char_gen); (5, forbidden_char_gen);]
+      in
     let name_gen =
-      Gen.oneof [
-        Gen.string_readable;
-      ] in
+        Gen.string_size ~gen:name_string_gen Gen.small_int;
+      in
 
     let timestamp_gen =
-      Gen.oneof [
         Gen.ui32;
-      ] in
+      in
 
     let create_user_parameter_gen = 
       Gen.quad user_id_gen dir_id_gen name_gen timestamp_gen 

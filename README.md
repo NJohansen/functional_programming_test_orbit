@@ -2,7 +2,7 @@
 
 Start docker image
 ```
-docker run --rm -p8085:8085 -eCLICOLOR_FORCE=1 cr.orbit.dev/sdu/filesync-server:latest
+docker run --rm -p8085:8085 -eCLICOLOR_FORCE=1 --name orbit cr.orbit.dev/sdu/filesync-server:latest
 ```
 
 ```
