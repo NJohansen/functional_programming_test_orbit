@@ -217,8 +217,11 @@ let can_read_directory (userId: int) (dirId: int) (state: system): bool =
   match userOption with
   | None -> false
   | Some user ->
-    if user.rights = Bypass then true else
-
+    if user.rights = Bypass then true 
+    
+    else if (user.rights = ReadOnly && dirId = 20)  || (user.rights = ReadWrite && dirId = 20) then true
+    
+    else
     let findChilds parentId = List.filter (fun child -> child.parent = (Some parentId)) state.directories in
 
     let read_rights directory = List.length (List.filter (fun rights -> (rights = (user.rights, Crud)) || (rights = (user.rights, Read))) directory.permissions) > 0 in

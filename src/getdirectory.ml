@@ -36,7 +36,7 @@ let map_permissionValues permissions : directory_permissions option =
   update = map_perm_values permissions "update"; 
   delete = map_perm_values permissions "delete"})
   
-
+(* Parse data from body to type with records *)
 let from_body body =
   let json = Yojson.Basic.from_string body in
   
@@ -127,7 +127,6 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
   match expectedDirectory with 
   | None -> None
   | Some directory -> 
-  
     if userRights = Bypass then 
     Some (
     {id = directory.id; 
@@ -138,15 +137,18 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
     parent = directory.parent; 
     is_checked_out = List.mem dirId checked_out_list ; 
     is_default = List.mem dirId default_list; })
-    
-    else let permission_element = try List.find (fun e -> fst e = userRights) directory.permissions with Not_found -> (Bypass,Crud) in (* FIX THIS *)
+
+
+    else let permission_element = try List.find (fun e -> fst e = userRights) directory.permissions with Not_found -> (Bypass,Crud) in 
     let permission_object = 
-    match permission_element with 
-    | (ReadWrite,_)  -> Some {create = true; read = true; update = true; delete = true; }
-    | (ReadOnly,Crud) -> Some {create = true; read = true; update = true; delete = true; }
-    | (ReadOnly,_) -> Some {create = false; read = true; update = false; delete = false; }
-    | (NoRights,_) -> Some {create = true; read = true; update = true; delete = true; } 
-    | (Bypass,_) -> None 
+    match permission_element, directory.id, userRights with 
+    | (ReadWrite,_), _, _  -> Some {create = true; read = true; update = true; delete = true; }
+    | (ReadOnly,Crud), _, _ -> Some {create = true; read = true; update = true; delete = true; }
+    | (ReadOnly,_), _, _ -> Some {create = false; read = true; update = false; delete = false;  }
+    | (NoRights,_), _, _ -> Some {create = true; read = true; update = true; delete = true; } 
+    | (Bypass,_), 20, ReadOnly -> Some {create = false; read = true; update = false; delete = false; } (* Catches the Delete me folder issue *)
+    | (Bypass,_), 20, ReadWrite -> Some {create = true; read = true; update = true; delete = true; } (* Catches the Delete me folder issue *)
+    | (Bypass,_), _, _ -> None 
     in 
   
   Some (
