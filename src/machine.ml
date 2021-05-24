@@ -4,6 +4,7 @@ open Filelist
 open Getfile
 open Deletefile
 open Deletedir
+open Getdirectory
 open Getversion
 
 module CConf =
@@ -11,6 +12,7 @@ struct
   type state = Orbit.system ref
   type sut   = Orbit.system ref
   type cmd   =
+    | Get_directory of int * int
     | Get_File_List of int 
     | Get_File of int * int
     | Get_Version of int * string 
@@ -55,6 +57,7 @@ struct
     Gen.oneof
       [ Gen.map (fun userId -> Get_File_List userId) user_id_gen;
         Gen.map2 (fun userId fileId -> Get_File (userId, fileId)) user_id_gen file_id_gen;
+        Gen.map2 (fun userId dirId -> Get_directory (userId, dirId)) user_id_gen dir_id_gen;
         Gen.map2 (fun userId versionString -> Get_Version (userId, versionString)) user_id_gen version_string_gen;
         Gen.map3 (fun userId fileId version -> Delete_File (userId, fileId, version)) user_id_gen file_id_gen version_gen;
         Gen.map3 (fun userId dirId version -> Delete_Dir (userId, dirId, version)) user_id_gen dir_id_gen version_gen]
@@ -66,6 +69,7 @@ struct
      begin Orbit.orbit_state := Orbit.initState end; Orbit.orbit_state )
   let next_state c st = match c with
     | Get_File_List _ -> Orbit.next_state_done !st
+    | Get_directory _ -> Orbit.next_state_done !st
     | Get_File _ -> Orbit.next_state_done !st
     | Get_Version _ -> Orbit.next_state_done !st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
@@ -76,6 +80,8 @@ struct
   let run_cmd c st su = match c with
     | Get_File_List userId -> 
       (Printf.printf "Get file list, user: %d \n" userId; Filelist.checkGetListOfFiles userId !st)
+    | Get_directory (userId,dirId) -> 
+      (Printf.printf "Get directory, user: %d - directory: %d \n" userId dirId; Getdirectory.checkGetDirectory userId dirId !st)
     | Get_File (userId, fileId) -> 
       (Printf.printf "Get file, user: %d - file: %d \n" userId fileId; Getfile.checkGetFile userId fileId !st)
     | Get_Version (userId, versionString) -> 
