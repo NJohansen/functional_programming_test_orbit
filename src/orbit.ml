@@ -1,4 +1,5 @@
 open Util
+open Http_common
 
 type user_rights = Bypass | ReadWrite | ReadOnly | NoRights [@@deriving show]
 
@@ -236,14 +237,42 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
     let file = List.filter (fun f -> f.id = fileId) filesList in
     if List.length file = 1 then true else false
 ;;
-  
+
+let rec has_read_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
+  match parentDirIdOption with
+  | None -> false
+  | Some parentDirId ->
+    let userOption = get_user userId state in
+    let dirOption = get_directory parentDirId state in
+    (match userOption, dirOption with
+    | None, None | None, _ | _, None -> false
+    | Some user, Some dir ->
+
+      let rec crud_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) : bool =
+        if user.rights = Bypass then true else
+        (match userRight, permissions with
+        | _, []-> false
+        | Bypass, _ -> true
+        | ReadWrite, (ReadWrite, Read)::_ | ReadWrite, (ReadWrite, Crud)::_ -> true
+        | ReadOnly, (ReadOnly, Read)::_   | ReadOnly, (ReadOnly, Crud)::_-> true
+        | NoRights, (NoRights, Read)::_   | NoRights, (NoRights, Crud)::_ -> true
+        | u, f::r -> crud_directory u r ) in
+
+      if crud_directory user.rights dir.permissions 
+      then true 
+      else has_read_rights userId dir.parent state)
+;;
+
 let can_read_directory (userId: int) (dirId: int) (state: system): bool =
   let userOption = get_user userId state in
   match userOption with
   | None -> false
   | Some user ->
-    if user.rights = Bypass then true else
+    if user.rights = Bypass then true 
 
+    else if has_read_rights userId (Some dirId) state then true
+    
+    else
     let findChilds parentId = List.filter (fun child -> child.parent = (Some parentId)) state.directories in
 
     let read_rights directory = List.length (List.filter (fun rights -> (rights = (user.rights, Crud)) || (rights = (user.rights, Read))) directory.permissions) > 0 in
@@ -268,7 +297,7 @@ let can_read_directory (userId: int) (dirId: int) (state: system): bool =
     )
 ;;
 
-let has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
+let rec has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
   match parentDirIdOption with
   | None -> false
   | Some parentDirId ->
@@ -288,7 +317,9 @@ let has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system
         | NoRights, (NoRights, Crud)::_ -> true
         | u, f::r -> crud_directory u r ) in
 
-      if crud_directory user.rights dir.permissions then true else false)
+      if crud_directory user.rights dir.permissions 
+      then true 
+      else has_crud_rights userId dir.parent state)
 ;;
 
 let is_empty_dir (dirId: int) (state: system) : bool =
