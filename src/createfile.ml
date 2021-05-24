@@ -29,17 +29,16 @@ let from_body body =
 
 (* Checks if the filename is valid according to the API specification *)
 let isNameValid (name: string): bool = 
-  let escaped_name = String.escaped name in 
-  let length = String.length escaped_name in
+  let length = String.length name in
   if (length = 0) then false else 
-  if (String.contains_from escaped_name (length-1) '.') then false else (*Does name end with a dot *)
-  if (String.contains_from escaped_name (length-1) ' ') then false else (*Does name end with a whitespace *)
-  if (String.rcontains_from escaped_name 0 ' ') then false else (* Does name begin with a whitespace *)
+  if (String.contains_from name (length-1) '.') then false else (*Does name end with a dot *)
+  if (String.contains_from name (length-1) ' ') then false else (*Does name end with a whitespace *)
+  if (String.rcontains_from name 0 ' ') then false else (* Does name begin with a whitespace *)
 
   let rec contains_illegal_chars (illegal_chars: char list): bool = 
     match illegal_chars with 
     | [] -> false
-    | f::r -> if (String.contains escaped_name f) then true else contains_illegal_chars r
+    | f::r -> if (String.contains name f) then true else contains_illegal_chars r
     in
   if (contains_illegal_chars forbidden_name_characters) then false else true
 ;;
@@ -56,13 +55,13 @@ let getExpectedResultBody (userId: int) (parentId: int) (fileTitle: string) (tim
     timestamp = msTimestamp;
   }
 
-let getExpectedResultHeaders  (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): Http_common.response = 
+let getExpectedResultHeaders (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): Http_common.response = 
   
   if((isNameValid fileTitle) = false) then Http_common.create_response Http_common.BadRequest else
   
   let dirOption: Orbit.directoryEntity option = Orbit.get_directory parentId state in
   match dirOption with 
-  | None -> Http_common.create_response ~x_entity:(Some "Directory") Http_common.NotFound
+  | None -> Http_common.create_response ~x_entity:(Some (*Directory*) "Parent") Http_common.NotFound
   | Some dir -> 
 
     if (Orbit.has_crud_rights userId (Some parentId) state ) = false
