@@ -57,6 +57,7 @@ let checkDeleteFile (userId: int) (fileId: int) (version: int) (state: Orbit.sys
 
 let deleteFileUpdateState (userId: int) (fileId: int) (version: int) (state: Orbit.system ref) : Orbit.system ref =
   if !Orbit.orbit_do_modification = false then state else
+  let _ = (Printf.printf "\n!!!!!!!!! DELETE FILE: %d  version: %d" fileId version; ()) in
 
   let fileToDeleteOption = Orbit.get_file fileId !state in
   match fileToDeleteOption with
@@ -74,6 +75,5 @@ let deleteFileUpdateState (userId: int) (fileId: int) (version: int) (state: Orb
       files = newFileList;
     } in
 
-    begin Orbit.orbit_state := newState end; 
-    Orbit.orbit_state
+    Orbit.next_state_done newState
 ;;

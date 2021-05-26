@@ -76,6 +76,7 @@ let checkDeleteDirectory (userId: int) (dirId: int) (version: int) (state: Orbit
 
 let deleteDirectoryUpdateState (userId: int) (dirId: int) (version: int) (state: Orbit.system ref) : Orbit.system ref =
   if !Orbit.orbit_do_modification = false then state else
+  let _ = (Printf.printf "\n!!!!!!!!! DELETE DIE: %d  version: %d" dirId version; ()) in
 
   let dirToDeleteOption = Orbit.get_directory dirId !state in
   match dirToDeleteOption with
@@ -110,7 +111,6 @@ let deleteDirectoryUpdateState (userId: int) (dirId: int) (version: int) (state:
         directories = newDirList;
       } in
 
-      begin Orbit.orbit_state := newState end; 
-      Orbit.orbit_state
+      Orbit.next_state_done newState
     )
 ;;
