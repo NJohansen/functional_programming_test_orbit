@@ -5,6 +5,7 @@ open Getfile
 open Createfile
 open Deletefile
 open Deletedir
+open Getfilemeta
 open Getdirectory
 open Getversion
 open Movefile
@@ -21,7 +22,8 @@ struct
     | Move_File of ((int * int * int) * (int * string * int32))
     | Create_File of int * int * string * int32 
     | Delete_File of int * int * int
-    | Delete_Dir of int * int * int [@@deriving show { with_path = false }] 
+    | Delete_Dir of int * int * int 
+    | Get_File_Meta of int * int [@@deriving show { with_path = false }]
 
   let gen_cmd (st: state) =
     let user_id_gen =
@@ -90,6 +92,7 @@ struct
         Gen.map2 (fun userId versionString -> Get_Version (userId, versionString)) user_id_gen version_string_gen;
         Gen.map3 (fun userId fileId version -> Delete_File (userId, fileId, version)) user_id_gen file_id_gen version_gen;
         Gen.map3 (fun userId dirId version -> Delete_Dir (userId, dirId, version)) user_id_gen dir_id_gen version_gen;
+        Gen.map2 (fun userId fileId -> Get_File_Meta (userId, fileId)) user_id_gen file_id_gen;
         Gen.map (fun (userId, dirId, name, timestamp) ->  Create_File (userId, dirId, name,  timestamp)) create_user_parameter_gen;
         Gen.map (fun ((userId, fileId, version),(parentId, name, timestamp)) ->  Move_File ((userId, fileId, version),(parentId, name, timestamp))) move_file_parameter_gen]
 
@@ -106,6 +109,7 @@ struct
     | Move_File ((userId, fileId, version),(parentId, name, timestamp)) -> Movefile.moveFileUpdateState userId fileId version parentId name (Int32.to_int timestamp) st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
+    | Get_File_Meta _ -> st
     | Create_File (userId, dirId, name, timestamp) -> Createfile.createFileUpdateState st userId dirId name (Int32.to_int timestamp) 
 
   let init_sut () = (Printf.printf "----------------\n"; Orbit.orbit_state)
@@ -125,6 +129,8 @@ struct
       (Printf.printf "Delete file, user: %d - file: %d - version: %d \n" userId fileId version; Deletefile.checkDeleteFile userId fileId version !st)      
     | Delete_Dir (userId, dirId, version) -> 
       (Printf.printf "Delete dir, user: %d - dir: %d - version: %d \n" userId dirId version; Deletedir.checkDeleteDirectory userId dirId version !st)
+    | Get_File_Meta (userId, fileId) ->
+      (Printf.printf "Get file metadata, user: %d - file: %d \n" userId fileId; Getfilemeta.checkFileMeta userId fileId !su)
     | Create_File (userId, dirId, name, timestamp) -> 
       (Printf.printf "Create file, user: %d - dir: %d - name: %s - timestamp: %ld \n" userId dirId name timestamp; Createfile.checkCreateFile userId dirId name (Int32.to_int timestamp) !st)
 
