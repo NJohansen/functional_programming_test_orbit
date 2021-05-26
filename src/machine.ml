@@ -8,6 +8,7 @@ open Deletedir
 open Getfilemeta
 open Getdirectory
 open Getversion
+open Movefile
 
 module CConf =
 struct
@@ -17,7 +18,8 @@ struct
     | Get_directory of int * int
     | Get_File_List of int 
     | Get_File of int * int
-    | Get_Version of int * string 
+    | Get_Version of int * string
+    | Move_File of ((int * int * int) * (int * string * int32))
     | Create_File of int * int * string * int32 
     | Delete_File of int * int * int
     | Delete_Dir of int * int * int 
@@ -77,8 +79,12 @@ struct
     let create_user_parameter_gen = 
       Gen.quad user_id_gen dir_id_gen name_gen timestamp_gen 
       in
+
     let version_string_gen =
       Gen.map3 (fun f1 f2 f3 -> Printf.sprintf "%d.%d.%d.%d.%d.%d" f1 f2 f3 f3 f2 f1) Gen.small_signed_int Gen.small_signed_int Gen.small_signed_int in
+
+    let move_file_parameter_gen = 
+      Gen.pair (Gen.triple user_id_gen file_id_gen version_gen) (Gen.triple dir_id_gen name_gen timestamp_gen) in
 
     Gen.oneof
       [ Gen.map (fun userId -> Get_File_List userId) user_id_gen;
@@ -88,7 +94,8 @@ struct
         Gen.map3 (fun userId fileId version -> Delete_File (userId, fileId, version)) user_id_gen file_id_gen version_gen;
         Gen.map3 (fun userId dirId version -> Delete_Dir (userId, dirId, version)) user_id_gen dir_id_gen version_gen;
         Gen.map2 (fun userId fileId -> Get_File_Meta (userId, fileId)) user_id_gen file_id_gen;
-        Gen.map (fun (userId, dirId, name, timestamp) ->  Create_File (userId, dirId, name,  timestamp)) create_user_parameter_gen]
+        Gen.map (fun (userId, dirId, name, timestamp) ->  Create_File (userId, dirId, name,  timestamp)) create_user_parameter_gen;
+        Gen.map (fun ((userId, fileId, version),(parentId, name, timestamp)) ->  Move_File ((userId, fileId, version),(parentId, name, timestamp))) move_file_parameter_gen]
 
   let arb_cmd (st: state) = QCheck.make ~print:show_cmd (gen_cmd st)
 
@@ -100,6 +107,7 @@ struct
     | Get_directory _ -> Orbit.next_state_done !st
     | Get_File _ -> Orbit.next_state_done !st
     | Get_Version _ -> Orbit.next_state_done !st
+    | Move_File ((userId, fileId, version),(parentId, name, timestamp)) -> Movefile.moveFileUpdateState userId fileId version parentId name (Int32.to_int timestamp) st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
     | Get_File_Meta _ -> st
@@ -115,7 +123,9 @@ struct
     | Get_File (userId, fileId) -> 
       (Printf.printf "Get file, user: %d - file: %d \n" userId fileId; Getfile.checkGetFile userId fileId !st)
     | Get_Version (userId, versionString) -> 
-      (Printf.printf "Get version, user: %d - versionString: %s \n" userId versionString; Getversion.checkVersion userId versionString !st)    
+      (Printf.printf "Get version, user: %d - versionString: %s \n" userId versionString; Getversion.checkVersion userId versionString !st)
+    | Move_File ((userId, fileId, version),(parentId, name, timestamp)) -> 
+      (Printf.printf "Move file, user: %d - file: %d - version: %d \n" userId fileId version; Movefile.checkMoveFile userId fileId version parentId name (Int32.to_int timestamp) !st)           
     | Delete_File (userId, fileId, version) -> 
       (Printf.printf "Delete file, user: %d - file: %d - version: %d \n" userId fileId version; Deletefile.checkDeleteFile userId fileId version !st)      
     | Delete_Dir (userId, dirId, version) -> 
