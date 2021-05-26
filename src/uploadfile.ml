@@ -30,11 +30,13 @@ let getExpectedResultHeader (userId: int) (fileId:int) (fileVersion:int) (state:
     | None -> Http_common.create_response ~x_entity:(Some "File") Http_common.NotFound
     | Some file -> 
 
+        if file.version != fileVersion 
+        then Http_common.create_response ~x_conflict:(Some "File-Version") Http_common.Conflict else
+        
         if (Orbit.has_crud_rights userId (Some file.parentId) state ) = false
         then Http_common.create_response ~x_entity:(Some "Parent") ~x_access_denied:(Some("Update")) Http_common.Unauthorized else
 
-        if file.version != fileVersion 
-        then Http_common.create_response ~x_conflict:(Some "File-Version") Http_common.Conflict else
+        
      
         Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk
 
@@ -69,3 +71,47 @@ let checkFileUpload (userId: int) (fileId: int) (fileVersion:int) (timestamp:int
             else true*)
     )
     | Error (_) -> false
+
+let uploadFileUpdateState (state: Orbit.system ref) (userId: int) (fileId: int) (fileVersion:int) (timestamp: int): system ref = 
+    if !Orbit.orbit_do_modification = false then state else 
+    let _ = (Printf.printf "\n!!!!!! UPLOAD FILE: %d" fileId; ()) in
+
+    let fileOption = Orbit.get_file fileId !state in
+    let msTimestamp = (timestamp * 10000000 + 621355968000000000) in
+    let modify = Util.create_ISO_timestamp () in
+    match fileOption with 
+        | None -> state
+        | Some file ->
+            let newFile = {
+                id = fileId;
+                name = file.name;
+                size = 0;
+                mimetype = "application/octet-stream";
+                parentId = file.parentId;
+                version = file.version+1;
+                createdAt = file.createdAt;
+                modifiedAt = modify;
+                msTimestamp = msTimestamp;
+                path = file.path;
+                snapshotsEnabled = false;
+                content = "";
+            } in
+            let rec fileToUpload (fileId: int) (files: Orbit.fileEntity list) (newFiles: Orbit.fileEntity list): Orbit.fileEntity list = 
+                (match files with
+                    | [] -> newFiles
+                    | f::rest when f.id = fileId -> newFile::newFiles
+                    | f::rest -> fileToUpload fileId rest (newFiles @ [f])) in
+    let newFileList = fileToUpload fileId !state.files [] in
+    
+    let newState = {
+        !state with
+        files = newFileList;
+    } in 
+
+    Orbit.next_state_done newState
+;;
+
+
+
+    
+    
