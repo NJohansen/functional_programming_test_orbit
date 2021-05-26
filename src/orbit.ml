@@ -380,3 +380,13 @@ let next_state_done (newState: system) : system ref =
     begin orbit_do_modification := false end; 
     begin orbit_state := newState end; 
     orbit_state
+
+
+let increaseFileCount (s: unit) =
+  let newState = {
+    !orbit_state with
+    fileIdCounter = !orbit_state.fileIdCounter + 1;
+  } in
+  let _ = next_state_done newState in
+  ()
+;;
