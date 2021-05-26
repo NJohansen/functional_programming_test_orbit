@@ -24,7 +24,6 @@ struct
     | Delete_File of int * int * int
     | Delete_Dir of int * int * int 
     | Get_File_Meta of int * int [@@deriving show { with_path = false }]
-    (* | Create_File of (int) (int) (int) (int) *)
 
   let gen_cmd (st: state) =
     let user_id_gen =

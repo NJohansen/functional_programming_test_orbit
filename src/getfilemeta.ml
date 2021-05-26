@@ -48,13 +48,6 @@ let getExpectedResultData (userId: int) (fileId: int) (state: Orbit.system) : re
             timestamp = (string_of_int file.msTimestamp)    
         }
 
-
-(*let matchBodyWithExpectedResult (bodyResult: resultData) (userId: int) (fileId: int) (state: Orbit.system) : bool =
-  let expectedData = getExpectedResultData userId fileId state in
-
-  if(compare expectedData bodyResult) != 0 then false else true*)
-
-
 let getExpectedResultHeaders (userId: int) (fileId: int) (state: Orbit.system) : Http_common.response = 
     let fileOption: Orbit.fileEntity option = Orbit.get_file fileId state in
     match fileOption with
@@ -68,10 +61,6 @@ let getExpectedResultHeaders (userId: int) (fileId: int) (state: Orbit.system) :
 let matchResults (userId: int) (fileId: int) (state: Orbit.system) (body: string) (requestResult: Http_common.response) : bool = 
     let expectedResultHeaders = getExpectedResultHeaders userId fileId state in
     if (compare expectedResultHeaders requestResult) != 0 then false else 
-
-    (*if (requestResult.status_code != Http_common.HttpOk) then false else
-    let expectedResultData = getExpectedResultData userId fileId state in
-    if (compare expectedResultData body) != 0 then false else true*)
 
     if(requestResult.status_code != Http_common.HttpOk) then true else
     let body = from_body body in
