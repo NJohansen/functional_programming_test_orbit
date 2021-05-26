@@ -16,7 +16,7 @@ let forbidden_name_characters = ['\\'; '/'; ':'; '*'; '?'; '\"'; '<'; '>';];;
 let from_body body =
   let json = Yojson.Basic.from_string body in
 
-  let id = json |> member "id" |> to_int in
+  let id = int_of_string (json |> member "id" |> to_string) in
   let version = json |> member "version" |> to_int in
   let name = json |> member "name" |> to_string in
   let timestamp = json |> member "timestamp" |> to_int in
@@ -117,10 +117,8 @@ let createFileUpdateState (state: Orbit.system ref) (userId: int) (parentId: int
   let newFileList = newFile::!state.files in  
   let updateStateFileIdCounter = fileId in
   let updatedState = { 
-    users = !state.users;
-    directories = !state.directories;
+    !state with
     files = newFileList;
-    directoryIdCounter = !state.directoryIdCounter;
     fileIdCounter=  updateStateFileIdCounter;
   } in
   Orbit.next_state_done updatedState
