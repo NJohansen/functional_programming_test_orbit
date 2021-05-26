@@ -345,3 +345,12 @@ let next_state_done (newState: system) : system ref =
     begin orbit_do_modification := false end; 
     begin orbit_state := newState end; 
     orbit_state
+
+let dir_exists (dirId: int) (name: string) (state: system): bool = 
+  let rec dir_name_exists (directories: directoryEntity list) (dir_name: string) (directoryId: int): bool = 
+    match directories with 
+    | [] -> false 
+    | d::r -> 
+      if d.name = dir_name && d.parent = Some(directoryId) then true 
+      else dir_name_exists r dir_name directoryId in
+  if dir_name_exists state.directories name dirId = false then false else true
