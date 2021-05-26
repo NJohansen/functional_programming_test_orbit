@@ -202,6 +202,23 @@ let get_file_path (fileId: int) (state: system): string option =
     Some (create_path (Some file.parentId) file.name "")
 ;;
 
+let get_dir_path_with_root (dirId: int) (state: system): string option =
+  let dirOption: directoryEntity option = get_directory dirId state in
+  match dirOption with 
+  | None -> None
+  | Some dir -> 
+    let rec create_path (parentId: int option) (append: string) (path: string): string =
+      (match parentId with
+      | None -> append ^ "/" ^ path
+      | Some id -> 
+        (match (get_directory id state) with 
+        | None -> append ^ "/" ^ path
+        | Some d -> 
+          create_path d.parent d.name (append ^ "/" ^ path))
+      ) in
+    Some (create_path dir.parent dir.name "")
+;;
+
 let can_read_file (userId: int) (fileId: int) (state: system): bool =
   let userOption = get_user userId state in
   match userOption with

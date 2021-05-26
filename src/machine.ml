@@ -6,6 +6,7 @@ open Deletefile
 open Deletedir
 open Getdirectory
 open Getversion
+open Movefile
 
 module CConf =
 struct
@@ -15,7 +16,8 @@ struct
     | Get_directory of int * int
     | Get_File_List of int 
     | Get_File of int * int
-    | Get_Version of int * string 
+    | Get_Version of int * string
+    | Move_File of int * int * int* int * string * int  
     | Delete_File of int * int * int
     | Delete_Dir of int * int * int [@@deriving show { with_path = false }]
     (* | Create_File of (int) (int) (int) (int) *)
@@ -72,6 +74,7 @@ struct
     | Get_directory _ -> Orbit.next_state_done !st
     | Get_File _ -> Orbit.next_state_done !st
     | Get_Version _ -> Orbit.next_state_done !st
+    | Move_File (userId, fileId, version, parentId, name, timestamp) -> Movefile.moveFileUpdateState userId fileId version parentId name timestamp st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
 
@@ -85,7 +88,9 @@ struct
     | Get_File (userId, fileId) -> 
       (Printf.printf "Get file, user: %d - file: %d \n" userId fileId; Getfile.checkGetFile userId fileId !st)
     | Get_Version (userId, versionString) -> 
-      (Printf.printf "Get version, user: %d - versionString: %s \n" userId versionString; Getversion.checkVersion userId versionString !st)    
+      (Printf.printf "Get version, user: %d - versionString: %s \n" userId versionString; Getversion.checkVersion userId versionString !st)
+    | Move_File (userId, fileId, version, parentId, name, timestamp) -> 
+      (Printf.printf "Move file, user: %d - file: %d - version: %d \n" userId fileId version; Movefile.checkMoveFile userId fileId version !st)           
     | Delete_File (userId, fileId, version) -> 
       (Printf.printf "Delete file, user: %d - file: %d - version: %d \n" userId fileId version; Deletefile.checkDeleteFile userId fileId version !st)      
     | Delete_Dir (userId, dirId, version) -> 
