@@ -3,6 +3,7 @@ open Yojson
 open Yojson.Basic.Util
 open Http_common
 open Orbit
+open Util
 
 type resultData = {
   id: int;
@@ -10,8 +11,6 @@ type resultData = {
   name: string;
   timestamp: int
 } [@@deriving show]
-
-let forbidden_name_characters = ['\\'; '/'; ':'; '*'; '?'; '\"'; '<'; '>';];;
 
 let from_body body =
   let json = Yojson.Basic.from_string body in
@@ -27,22 +26,6 @@ let from_body body =
     timestamp = timestamp;
   }
 
-(* Checks if the filename is valid according to the API specification *)
-let isNameValid (name: string): bool = 
-  let length = String.length name in
-  if (length = 0) then false else 
-  if (String.contains_from name (length-1) '.') then false else (*Does name end with a dot *)
-  if (String.contains_from name (length-1) ' ') then false else (*Does name end with a whitespace *)
-  if (String.rcontains_from name 0 ' ') then false else (* Does name begin with a whitespace *)
-
-  let rec contains_illegal_chars (illegal_chars: char list): bool = 
-    match illegal_chars with 
-    | [] -> false
-    | f::r -> if (String.contains name f) then true else contains_illegal_chars r
-    in
-  if (contains_illegal_chars forbidden_name_characters) then false else true
-;;
-
 let getExpectedResultBody (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): resultData option = 
     let msTimestamp = (timestamp * 10000000 + 621355968000000000) in
     let id = (state.fileIdCounter + 1) in 
@@ -57,7 +40,7 @@ let getExpectedResultBody (userId: int) (parentId: int) (fileTitle: string) (tim
 
 let getExpectedResultHeaders (userId: int) (parentId: int) (fileTitle: string) (timestamp: int) (state: Orbit.system): Http_common.response = 
   
-  if((isNameValid fileTitle) = false) then Http_common.create_response Http_common.BadRequest else
+  if((Util.isNameValid fileTitle) = false) then Http_common.create_response Http_common.BadRequest else
   
   let dirOption: Orbit.directoryEntity option = Orbit.get_directory parentId state in
   match dirOption with 
