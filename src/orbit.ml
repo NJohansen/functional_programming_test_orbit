@@ -163,27 +163,6 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
     match_parent_id list []
 ;;
 
-(*
-(* Returns the list of directories that the user has write access to *)
-let get_write_access_directories (userId: int) (state: system) : directoryEntity list =
-  let userOption = get_user userId state in
-  match userOption with
-  | None -> []
-  | Some user ->
-    let rec can_write_directory (user: userEntity) (dirId: int) (permissions: (user_rights * directory_permissions) list) : bool =
-      if Util.part_of_list user.checkedOut dirId == false
-      then false else (
-        match user.rights, permissions with
-        | _, []-> false
-        | Bypass, _::_ -> true
-        | ReadWrite, (ReadWrite, _)::_ -> true
-        | ReadOnly, (ReadOnly, _)::_ -> false
-        | None, (None, _)::_ -> false
-        | _, f::r -> can_write_directory user dirId r) in
-
-    List.filter (fun (d: directoryEntity) -> can_write_directory user d.id d.permissions) state.directories
-;; *)
-
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
   let availableDirectories = get_list_directory_ignore_checkout userId state in
   match availableDirectories with
