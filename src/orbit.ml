@@ -40,6 +40,8 @@ type system = {
   users: userEntity list;
   directories: directoryEntity list;
   files: fileEntity list;
+  directoryIdCounter: int;
+  fileIdCounter: int;
 } [@@deriving show]
 
 (* let get_file_list userId = *)
@@ -76,6 +78,8 @@ let initState =
       [{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; content = "INTRO.txt located at /Users/Shared files/INTRO.txt\n USER_ID=100 (rw) can read and write content to the file, but USER_ID=101 (ro) can only read it. USER_ID=102 (none) has no access it."};
        {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/rw/README.txt\nOnly USER_ID=100 can access it.\n"};
        {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/ro/README.txt\nOnly USER_ID=101 can access it.\n"}];
+    directoryIdCounter = 21;
+    fileIdCounter = 4;
   }
 
 let orbit_state: system ref = ref initState
@@ -158,6 +162,27 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
     
     match_parent_id list []
 ;;
+
+(*
+(* Returns the list of directories that the user has write access to *)
+let get_write_access_directories (userId: int) (state: system) : directoryEntity list =
+  let userOption = get_user userId state in
+  match userOption with
+  | None -> []
+  | Some user ->
+    let rec can_write_directory (user: userEntity) (dirId: int) (permissions: (user_rights * directory_permissions) list) : bool =
+      if Util.part_of_list user.checkedOut dirId == false
+      then false else (
+        match user.rights, permissions with
+        | _, []-> false
+        | Bypass, _::_ -> true
+        | ReadWrite, (ReadWrite, _)::_ -> true
+        | ReadOnly, (ReadOnly, _)::_ -> false
+        | None, (None, _)::_ -> false
+        | _, f::r -> can_write_directory user dirId r) in
+
+    List.filter (fun (d: directoryEntity) -> can_write_directory user d.id d.permissions) state.directories
+;; *)
 
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
   let availableDirectories = get_list_directory_ignore_checkout userId state in
@@ -334,6 +359,16 @@ let is_empty_dir (dirId: int) (state: system) : bool =
   if checkFiles state.files = false then false else true
 ;;
 
+(* Checks if a given filename exists in a specific directory *)
+let file_exists (dirId: int) (name: string) (state: system): bool = 
+  let rec file_name_exists (files: fileEntity list) (file_name: string) (directoryId: int): bool = 
+    match files with 
+    | [] -> false 
+    | f::r -> 
+      if f.name = file_name && f.parentId = directoryId then true 
+      else file_name_exists r file_name directoryId in
+  if file_name_exists state.files name dirId = false then false else true
+
 let printStateStatus s =
   let _ = (Printf.printf "\n!!!!!!!!!!!!!!!! Users: %d - Dirs: %d - Files: %d\n" (List.length !orbit_state.users) (List.length !orbit_state.directories) (List.length !orbit_state.files); ()) in
   ()
@@ -362,3 +397,13 @@ let next_state_done (newState: system) : system ref =
     begin orbit_do_modification := false end; 
     begin orbit_state := newState end; 
     orbit_state
+
+
+let increaseFileCount (s: unit) =
+  let newState = {
+    !orbit_state with
+    fileIdCounter = !orbit_state.fileIdCounter + 1;
+  } in
+  let _ = next_state_done newState in
+  ()
+;;
