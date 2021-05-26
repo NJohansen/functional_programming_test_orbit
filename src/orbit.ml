@@ -1,4 +1,5 @@
 open Util
+open Http_common
 
 type user_rights = Bypass | ReadWrite | ReadOnly | NoRights [@@deriving show]
 
@@ -39,6 +40,8 @@ type system = {
   users: userEntity list;
   directories: directoryEntity list;
   files: fileEntity list;
+  directoryIdCounter: int;
+  fileIdCounter: int;
 } [@@deriving show]
 
 (* let get_file_list userId = *)
@@ -75,6 +78,8 @@ let initState =
       [{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; content = "INTRO.txt located at /Users/Shared files/INTRO.txt\n USER_ID=100 (rw) can read and write content to the file, but USER_ID=101 (ro) can only read it. USER_ID=102 (none) has no access it."};
        {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/rw/README.txt\nOnly USER_ID=100 can access it.\n"};
        {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/ro/README.txt\nOnly USER_ID=101 can access it.\n"}];
+    directoryIdCounter = 21;
+    fileIdCounter = 4;
   }
 
 let orbit_state: system ref = ref initState
@@ -212,18 +217,66 @@ let can_read_file (userId: int) (fileId: int) (state: system): bool =
     if List.length file = 1 then true else false
 ;;
 
+let rec has_read_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
+  match parentDirIdOption with
+  | None -> false
+  | Some parentDirId ->
+    let userOption = get_user userId state in
+    let dirOption = get_directory parentDirId state in
+    (match userOption, dirOption with
+    | None, None | None, _ | _, None -> false
+    | Some user, Some dir ->
+
+      let rec crud_directory (userRight: user_rights) (permissions: (user_rights * directory_permissions) list) : bool =
+        if user.rights = Bypass then true else
+        (match userRight, permissions with
+        | _, []-> false
+        | Bypass, _ -> true
+        | ReadWrite, (ReadWrite, Read)::_ | ReadWrite, (ReadWrite, Crud)::_ -> true
+        | ReadOnly, (ReadOnly, Read)::_   | ReadOnly, (ReadOnly, Crud)::_-> true
+        | NoRights, (NoRights, Read)::_   | NoRights, (NoRights, Crud)::_ -> true
+        | u, f::r -> crud_directory u r ) in
+
+      if crud_directory user.rights dir.permissions 
+      then true 
+      else has_read_rights userId dir.parent state)
+;;
+
 let can_read_directory (userId: int) (dirId: int) (state: system): bool =
   let userOption = get_user userId state in
   match userOption with
   | None -> false
   | Some user ->
-    if user.rights = Bypass then true else
-    let dirList: directoryEntity list = get_list_directory_ignore_checkout userId state in
-    let dir = List.filter (fun (f: directoryEntity) -> f.id = dirId) dirList in
-    if List.length dir = 1 then true else false
+    if user.rights = Bypass then true 
+
+    else if has_read_rights userId (Some dirId) state then true
+    
+    else
+    let findChilds parentId = List.filter (fun child -> child.parent = (Some parentId)) state.directories in
+
+    let read_rights directory = List.length (List.filter (fun rights -> (rights = (user.rights, Crud)) || (rights = (user.rights, Read))) directory.permissions) > 0 in
+
+    let rec check_for_read_rights (dir: directoryEntity) (childs: directoryEntity list) : bool =
+      if read_rights dir then true else
+      List.length (
+        List.filter (fun (child: directoryEntity) ->
+          if read_rights child then true else
+          (match findChilds child.id with
+          | [] -> false
+          | f::r ->
+            if read_rights f
+            then true
+            else check_for_read_rights f (findChilds f.id))
+      ) childs) > 0 in
+
+    let dirOption = get_directory dirId state in
+    (match dirOption with
+    | None -> false
+    | Some dir -> check_for_read_rights dir (findChilds dirId)
+    )
 ;;
 
-let has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
+let rec has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system) : bool =
   match parentDirIdOption with
   | None -> false
   | Some parentDirId ->
@@ -243,7 +296,9 @@ let has_crud_rights (userId: int) (parentDirIdOption: int option) (state: system
         | NoRights, (NoRights, Crud)::_ -> true
         | u, f::r -> crud_directory u r ) in
 
-      if crud_directory user.rights dir.permissions then true else false)
+      if crud_directory user.rights dir.permissions 
+      then true 
+      else has_crud_rights userId dir.parent state)
 ;;
 
 let is_empty_dir (dirId: int) (state: system) : bool =
@@ -265,6 +320,16 @@ let is_empty_dir (dirId: int) (state: system) : bool =
       else checkFiles r in
   if checkFiles state.files = false then false else true
 ;;
+
+(* Checks if a given filename exists in a specific directory *)
+let file_exists (dirId: int) (name: string) (state: system): bool = 
+  let rec file_name_exists (files: fileEntity list) (file_name: string) (directoryId: int): bool = 
+    match files with 
+    | [] -> false 
+    | f::r -> 
+      if f.name = file_name && f.parentId = directoryId then true 
+      else file_name_exists r file_name directoryId in
+  if file_name_exists state.files name dirId = false then false else true
 
 let printStateStatus s =
   let _ = (Printf.printf "\n!!!!!!!!!!!!!!!! Users: %d - Dirs: %d - Files: %d\n" (List.length !orbit_state.users) (List.length !orbit_state.directories) (List.length !orbit_state.files); ()) in
@@ -294,3 +359,13 @@ let next_state_done (newState: system) : system ref =
     begin orbit_do_modification := false end; 
     begin orbit_state := newState end; 
     orbit_state
+
+
+let increaseFileCount (s: unit) =
+  let newState = {
+    !orbit_state with
+    fileIdCounter = !orbit_state.fileIdCounter + 1;
+  } in
+  let _ = next_state_done newState in
+  ()
+;;

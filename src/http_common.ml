@@ -1,10 +1,11 @@
-type status_code = HttpOk | NotFound | BadRequest | Unauthorized | NotAcceptable | Conflict| InternalServerError | Unknown of int
+type status_code = HttpOk | NotFound | Forbidden | BadRequest | Unauthorized | NotAcceptable | Conflict| InternalServerError | Unknown of int
 
 let status_code_of_int n = match n with
   | 200 -> HttpOk
   | 400 -> BadRequest
   | 401 -> Unauthorized
   | 404 -> NotFound
+  | 403 -> Forbidden
   | 406 -> NotAcceptable
   | 409 -> Conflict
   | 500 -> InternalServerError
@@ -14,6 +15,7 @@ let status_code_to_int n = match n with
   | HttpOk -> 200
   | BadRequest -> 400
   | Unauthorized -> 401
+  | Forbidden -> 403
   | NotFound -> 404
   | NotAcceptable -> 406
   | Conflict -> 409
