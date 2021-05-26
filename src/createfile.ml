@@ -47,11 +47,11 @@ let getExpectedResultHeaders (userId: int) (parentId: int) (fileTitle: string) (
   | None -> Http_common.create_response ~x_entity:(Some (*Directory*) "Parent") Http_common.NotFound
   | Some dir -> 
 
-    if (Orbit.has_crud_rights userId (Some parentId) state ) = false
-    then (Orbit.increaseFileCount (); Http_common.create_response ~x_entity:(Some "Directory") ~x_access_denied:(Some("Create")) Http_common.Unauthorized) else
-
     if(Orbit.file_exists parentId fileTitle state) = true 
     then (Orbit.increaseFileCount (); Http_common.create_response ~x_conflict:(Some("Entity-Exists")) Http_common.Conflict) else 
+
+    if (Orbit.has_crud_rights userId (Some parentId) state ) = false
+    then (Orbit.increaseFileCount (); Http_common.create_response ~x_entity:(Some "Directory") ~x_access_denied:(Some("Create")) Http_common.Unauthorized) else
 
     Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk
 ;;
