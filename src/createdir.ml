@@ -54,24 +54,30 @@ let getExpectedResultBody (parentId: int) (dirName: string) (dirVersion: int) (s
 
 let getExpectedResultHeaders (userId: int) (parentId: int) (dirName: string) (version: int) (state: Orbit.system): Http_common.response = 
 
-  if((Util.isNameValid dirName) = false || version != 1) then Http_common.create_response Http_common.BadRequest else
+  if((Util.isNameValid dirName) = false) then Http_common.create_response Http_common.BadRequest else
 
+  
   let dirOption: Orbit.directoryEntity option = Orbit.get_directory parentId state in
   match dirOption with 
   | None -> Http_common.create_response ~x_entity:(Some (*Directory*) "Parent") Http_common.NotFound
   | Some dir -> 
+    
+    if version != dir.version 
+    then  (Orbit.increaseDirCount (); Http_common.create_response ~x_conflict:(Some("Parent-Version")) Http_common.Conflict) else  
 
     if (Orbit.has_crud_rights userId (Some parentId) state ) = false
-    then Http_common.create_response ~x_entity:(Some "Directory") ~x_access_denied:(Some("Create")) Http_common.Unauthorized else
+    then (Orbit.increaseDirCount (); Http_common.create_response ~x_entity:(Some "Directory") ~x_access_denied:(Some("Create")) Http_common.Unauthorized) else
+    
 
     if(Orbit.dir_exists parentId dirName state) = true 
-    then  Http_common.create_response ~x_conflict:(Some("Entity-Exists")) Http_common.Conflict else 
+    then (Orbit.increaseDirCount (); Http_common.create_response ~x_conflict:(Some("Entity-Exists")) Http_common.Conflict) else 
+
 
     Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk
 ;;
 
 let checkCreateDir (userId: int) (parentId: int) (dirName: string) (dirVersion: int) (state: Orbit.system): bool =
-  let url = Printf.sprintf ("http://localhost:8085/dir?userId=%d&parentId=22&name=%s&version=%d") userId parentId dirName dirVersion in
+  let url = Printf.sprintf ("http://localhost:8085/dir?userId=%d&parentId=%d&name=%s&version=%d") userId parentId dirName dirVersion in
   match Ezcurl.post ~url: url ~params: [] () with
   | Ok resp -> (
     Orbit.matchResults 
@@ -89,7 +95,6 @@ let createDirUpdateState (state: Orbit.system ref) (userId: int) (parentId: int)
 
   let dirCounter = !state.directoryIdCounter in
   let dirId = dirCounter + 1 in  
-  let createdAt = Util.create_ISO_timestamp () in 
   let dir = get_directory parentId !state in 
   let path = 
       match dir with 
@@ -102,8 +107,8 @@ let createDirUpdateState (state: Orbit.system ref) (userId: int) (parentId: int)
       name = name; 
       path = Printf.sprintf ("%s%s") path name; 
       version = dirVersion; 
-      __permissions = [] ; 
-      parent = parentId; 
+      permissions = [] ; 
+      parent = Some(parentId); 
       }
   in
   let newDirList = newDir::!state.directories in  
