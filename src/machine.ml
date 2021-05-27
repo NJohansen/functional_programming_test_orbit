@@ -96,7 +96,7 @@ struct
         Gen.map2 (fun userId versionString -> Get_Version (userId, versionString)) user_id_gen version_string_gen;
         Gen.map3 (fun userId fileId version -> Delete_File (userId, fileId, version)) user_id_gen file_id_gen version_gen;
         Gen.map3 (fun userId dirId version -> Delete_Dir (userId, dirId, version)) user_id_gen dir_id_gen version_gen;
-        Gen.map (fun (userId, parentId, dirName, dirVersion) ->  Create_Directory (userId, parentId, dirName, dirVersion)) create_dir_parameter_gen]
+        Gen.map (fun (userId, parentId, dirName, dirVersion) ->  Create_Directory (userId, parentId, dirName, dirVersion)) create_dir_parameter_gen;
         Gen.map2 (fun userId fileId -> Get_File_Meta (userId, fileId)) user_id_gen file_id_gen;
         Gen.map (fun (userId, dirId, name, timestamp) ->  Create_File (userId, dirId, name,  timestamp)) create_user_parameter_gen;
         Gen.map (fun ((userId, fileId, version),(parentId, name, timestamp)) ->  Move_File ((userId, fileId, version),(parentId, name, timestamp))) move_file_parameter_gen]
@@ -146,6 +146,6 @@ struct
 end
 module CT = QCSTM.Make(CConf)
 ;;
-(* QCheck_runner.set_seed 202100576;; *)
+(* QCheck_runner.set_seed 483586791;; *)
 QCheck_runner.run_tests ~verbose:true
   [CT.agree_test ~count:20 ~name:"orbit-model agreement"]

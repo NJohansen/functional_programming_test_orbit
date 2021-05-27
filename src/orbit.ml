@@ -153,14 +153,23 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
   match availableDirectories with
   | [] -> []
   | list -> 
-      
-      let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
-      match dirList with 
-      | [] -> fileList
-      | head::tail -> let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
-      match_parent_id tail fileList@files in
+    let rec findChildDirs (dirList: directoryEntity list) (newDirList: directoryEntity list): directoryEntity list =
+      match dirList with
+      | [] -> newDirList
+      | f::r ->
+        let childDirs = List.filter(fun (d: directoryEntity) -> (Some f.id) = d.parent) state.directories in
+        findChildDirs (r@childDirs) (f::newDirList) in
     
-    match_parent_id list []
+    let allDirs = findChildDirs list [] in
+    
+    let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
+    match dirList with 
+      | [] -> fileList
+      | head::tail -> 
+        let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
+        match_parent_id tail fileList@files in
+    
+    match_parent_id allDirs []
 ;;
 
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
@@ -396,6 +405,7 @@ let increaseFileCount (s: unit) =
   ()
 ;;
 
+(* Not used for now, many later
 let increaseDirCount (s: unit) =
   let newState = {
     !orbit_state with
@@ -403,4 +413,4 @@ let increaseDirCount (s: unit) =
   } in
   let _ = next_state_done newState in
   ()
-;;
+;; *)

@@ -40,38 +40,32 @@ let from_body body =
 
 let getExpectedResultBody (parentId: int) (dirName: string) (dirVersion: int) (state: Orbit.system): resultData option = 
     let id = (state.directoryIdCounter + 1) in 
-    let version = 1 in 
-    let name = dirName in
-    let parentId = parentId in
-    let newVersions = [] in
     Some {
-    name = name;
-    id = id;
-    version = version;
-    parentId = parentId;
-    newVersions = newVersions;
-  }
+      name = dirName;
+      id = id;
+      version = 1;
+      parentId = parentId;
+      newVersions = [];
+    }
 
 let getExpectedResultHeaders (userId: int) (parentId: int) (dirName: string) (version: int) (state: Orbit.system): Http_common.response = 
 
   if((Util.isNameValid dirName) = false) then Http_common.create_response Http_common.BadRequest else
-
   
   let dirOption: Orbit.directoryEntity option = Orbit.get_directory parentId state in
   match dirOption with 
-  | None -> Http_common.create_response ~x_entity:(Some (*Directory*) "Parent") Http_common.NotFound
+  | None -> Http_common.create_response ~x_entity:(Some "Parent") Http_common.NotFound
   | Some dir -> 
     
+    let _ = (Printf.printf " VERSION ---- %d - %d" version dir.version ; ()) in
     if version != dir.version 
-    then  (Orbit.increaseDirCount (); Http_common.create_response ~x_conflict:(Some("Parent-Version")) Http_common.Conflict) else  
+    then  (Http_common.create_response ~x_conflict:(Some("Parent-Version")) Http_common.Conflict) else  
 
     if (Orbit.has_crud_rights userId (Some parentId) state ) = false
-    then (Orbit.increaseDirCount (); Http_common.create_response ~x_entity:(Some "Directory") ~x_access_denied:(Some("Create")) Http_common.Unauthorized) else
+    then (Http_common.create_response ~x_entity:(Some "Directory") ~x_access_denied:(Some("Create")) Http_common.Unauthorized) else
     
-
     if(Orbit.dir_exists parentId dirName state) = true 
-    then (Orbit.increaseDirCount (); Http_common.create_response ~x_conflict:(Some("Entity-Exists")) Http_common.Conflict) else 
-
+    then (Http_common.create_response ~x_conflict:(Some("Entity-Exists")) Http_common.Conflict) else 
 
     Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk
 ;;
@@ -80,7 +74,7 @@ let checkCreateDir (userId: int) (parentId: int) (dirName: string) (dirVersion: 
   let url = Printf.sprintf ("http://localhost:8085/dir?userId=%d&parentId=%d&name=%s&version=%d") userId parentId dirName dirVersion in
   match Ezcurl.post ~url: url ~params: [] () with
   | Ok resp -> (
-    Orbit.matchResults 
+    Orbit.matchResults
       (fun _ -> getExpectedResultHeaders userId parentId dirName dirVersion state) 
       (fun _ -> Http_common.map_response resp) 
       (fun _ -> getExpectedResultBody parentId dirName dirVersion state) 
@@ -93,8 +87,7 @@ let checkCreateDir (userId: int) (parentId: int) (dirName: string) (dirVersion: 
 let createDirUpdateState (state: Orbit.system ref) (userId: int) (parentId: int) (name: string) (dirVersion: int): system ref = 
   if !Orbit.orbit_do_modification = false then state else
 
-  let dirCounter = !state.directoryIdCounter in
-  let dirId = dirCounter + 1 in  
+  let dirId = !state.directoryIdCounter + 1 in  
   let dir = get_directory parentId !state in 
   let path = 
       match dir with 
@@ -105,8 +98,8 @@ let createDirUpdateState (state: Orbit.system ref) (userId: int) (parentId: int)
   {
       id = dirId; 
       name = name; 
-      path = Printf.sprintf ("%s%s") path name; 
-      version = dirVersion; 
+      path = Printf.sprintf ("%s%s/") path name; 
+      version = 1; 
       permissions = [] ; 
       parent = Some(parentId); 
       }

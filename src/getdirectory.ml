@@ -128,45 +128,43 @@ let getExpectedBody (userId: int) (dirId: int) (state: Orbit.system) : directory
   | None -> None
   | Some directory -> 
     if userRights = Bypass then 
-    Some (
-    {id = directory.id; 
-    name = directory.name; 
-    path = directory.path; 
-    version = directory.version; 
-    __permissions = None ; 
-    parent = directory.parent; 
-    is_checked_out = List.mem dirId checked_out_list ; 
-    is_default = List.mem dirId default_list; })
-
-
-    else let permission_element = try List.find (fun e -> fst e = userRights) directory.permissions with Not_found -> (Bypass,Crud) in 
-    let permission_object = 
-    match permission_element, directory.id, userRights with 
-    | (ReadWrite,_), _, _  -> Some {create = true; read = true; update = true; delete = true; }
-    | (ReadOnly,Crud), _, _ -> Some {create = true; read = true; update = true; delete = true; }
-    | (ReadOnly,_), _, _ -> Some {create = false; read = true; update = false; delete = false;  }
-    | (NoRights,_), _, _ -> Some {create = true; read = true; update = true; delete = true; } 
-    | (Bypass,_), 20, ReadOnly -> Some {create = false; read = true; update = false; delete = false; } (* Catches the Delete me folder issue *)
-    | (Bypass,_), 20, ReadWrite -> Some {create = true; read = true; update = true; delete = true; } (* Catches the Delete me folder issue *)
-    | (Bypass,_), _, _ -> None 
-    in 
+      Some (
+        {
+          id = directory.id; 
+          name = directory.name; 
+          path = directory.path; 
+          version = directory.version; 
+          __permissions = None ; 
+          parent = directory.parent; 
+          is_checked_out = List.mem dirId checked_out_list ; 
+          is_default = List.mem dirId default_list; 
+        })
+    else 
+      let permission_object =
+        match (Orbit.has_read_rights userId (Some directory.id) state), (Orbit.has_crud_rights userId (Some directory.id) state) with
+        | _, true -> Some {create = true; read = true; update = true; delete = true; }
+        | true, _ -> Some {create = false; read = true; update = false; delete = false;}
+        | _, _ -> None
+      in 
   
-  Some (
-  {id = directory.id; 
-  name = directory.name; 
-  path = directory.path; 
-  version = directory.version; 
-  __permissions = permission_object ; 
-  parent = directory.parent; 
-  is_checked_out = List.mem dirId checked_out_list;
-  is_default = List.mem dirId default_list; })
+      Some (
+        {
+          id = directory.id; 
+          name = directory.name; 
+          path = directory.path; 
+          version = directory.version; 
+          __permissions = permission_object ; 
+          parent = directory.parent; 
+          is_checked_out = List.mem dirId checked_out_list;
+          is_default = List.mem dirId default_list; 
+        })
 ;;
 
 let checkGetDirectory (userId: int) (dirId: int) (state: Orbit.system): bool =
   let url = "http://localhost:8085/api/directories?userId=" ^ (string_of_int userId) ^ "&id=" ^ (string_of_int dirId) in
   match Ezcurl.get ~url: url () with
     | Ok resp -> (
-    Orbit.matchResults 
+    Orbit.matchResults
       (fun _ -> getExpectedHeader userId dirId state) 
       (fun _ -> Http_common.map_response resp) 
       (fun _ -> getExpectedBody userId dirId state) 
