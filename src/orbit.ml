@@ -163,27 +163,6 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
     match_parent_id list []
 ;;
 
-(*
-(* Returns the list of directories that the user has write access to *)
-let get_write_access_directories (userId: int) (state: system) : directoryEntity list =
-  let userOption = get_user userId state in
-  match userOption with
-  | None -> []
-  | Some user ->
-    let rec can_write_directory (user: userEntity) (dirId: int) (permissions: (user_rights * directory_permissions) list) : bool =
-      if Util.part_of_list user.checkedOut dirId == false
-      then false else (
-        match user.rights, permissions with
-        | _, []-> false
-        | Bypass, _::_ -> true
-        | ReadWrite, (ReadWrite, _)::_ -> true
-        | ReadOnly, (ReadOnly, _)::_ -> false
-        | None, (None, _)::_ -> false
-        | _, f::r -> can_write_directory user dirId r) in
-
-    List.filter (fun (d: directoryEntity) -> can_write_directory user d.id d.permissions) state.directories
-;; *)
-
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
   let availableDirectories = get_list_directory_ignore_checkout userId state in
   match availableDirectories with
@@ -225,6 +204,23 @@ let get_file_path (fileId: int) (state: system): string option =
           else create_path d.parent d.name (append ^ "/" ^ path)))
       ) in
     Some (create_path (Some file.parentId) file.name "")
+;;
+
+let get_dir_path_with_root (dirId: int) (state: system): string option =
+  let dirOption: directoryEntity option = get_directory dirId state in
+  match dirOption with 
+  | None -> None
+  | Some dir -> 
+    let rec create_path (parentId: int option) (append: string) (path: string): string =
+      (match parentId with
+      | None -> append ^ "/" ^ path
+      | Some id -> 
+        (match (get_directory id state) with 
+        | None -> append ^ "/" ^ path
+        | Some d -> 
+          create_path d.parent d.name (append ^ "/" ^ path))
+      ) in
+    Some (create_path dir.parent dir.name "")
 ;;
 
 let can_read_file (userId: int) (fileId: int) (state: system): bool =
