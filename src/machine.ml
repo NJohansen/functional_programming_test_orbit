@@ -117,11 +117,11 @@ struct
     | Get_directory _ -> Orbit.next_state_done !st
     | Get_File _ -> Orbit.next_state_done !st
     | Get_Version _ -> Orbit.next_state_done !st
+    | Get_File_Meta _ -> Orbit.next_state_done !st
     | Move_File ((userId, fileId, version),(parentId, name, timestamp)) -> Movefile.moveFileUpdateState userId fileId version parentId name (Int32.to_int timestamp) st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
     | Upload_File (userId, fileId, version, timestamp) -> Uploadfile.uploadFileUpdateState st userId fileId version (Int32.to_int timestamp)
-    | Get_File_Meta _ -> st
     | Create_File (userId, dirId, name, timestamp) -> Createfile.createFileUpdateState st userId dirId name (Int32.to_int timestamp) 
     | Create_Directory (userId, parentId, dirName, dirVersion) -> Createdir.createDirUpdateState st userId parentId dirName dirVersion
 
