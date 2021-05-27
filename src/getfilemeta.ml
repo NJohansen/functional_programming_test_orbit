@@ -53,7 +53,7 @@ let getExpectedResultHeaders (userId: int) (fileId: int) (state: Orbit.system) :
     match fileOption with
     | None -> Http_common.create_response ~x_entity:(Some "File") Http_common.NotFound
     | Some file ->
-        if(Orbit.can_read_file userId file.id state ) = false
+        if(Orbit.has_read_rights userId (Some file.parentId) state ) = false
         then Http_common.create_response ~x_entity: (Some "Parent") ~x_access_denied: (Some("Read")) Http_common.Unauthorized else
         Http_common.create_response ~content_type: (Some "application/json") Http_common.HttpOk
 ;;
