@@ -40,6 +40,8 @@ type system = {
   users: userEntity list;
   directories: directoryEntity list;
   files: fileEntity list;
+  directoryIdCounter: int;
+  fileIdCounter: int;
 } [@@deriving show]
 
 (* let get_file_list userId = *)
@@ -76,6 +78,8 @@ let initState =
       [{id = 4; name = "INTRO.txt"; size = 184; mimetype = "text/plain"; parentId = 9; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Shared files/INTRO.txt"; snapshotsEnabled = false; content = "INTRO.txt located at /Users/Shared files/INTRO.txt\n USER_ID=100 (rw) can read and write content to the file, but USER_ID=101 (ro) can only read it. USER_ID=102 (none) has no access it."};
        {id = 2; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 15; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/rw/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/rw/README.txt\nOnly USER_ID=100 can access it.\n"};
        {id = 3; name = "README.txt"; size = 78; mimetype = "text/plain"; parentId = 16; version = 1; createdAt = "2021-02-19T15:20:35.704Z"; modifiedAt = "2021-02-19T15:20:35.704Z"; msTimestamp = 637479675580000000; path = "server-files/Users/ro/README.txt"; snapshotsEnabled = false; content = "README.txt located at /Users/ro/README.txt\nOnly USER_ID=101 can access it.\n"}];
+    directoryIdCounter = 21;
+    fileIdCounter = 4;
   }
 
 let orbit_state: system ref = ref initState
@@ -149,14 +153,23 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
   match availableDirectories with
   | [] -> []
   | list -> 
-      
-      let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
-      match dirList with 
-      | [] -> fileList
-      | head::tail -> let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
-      match_parent_id tail fileList@files in
+    let rec findChildDirs (dirList: directoryEntity list) (newDirList: directoryEntity list): directoryEntity list =
+      match dirList with
+      | [] -> newDirList
+      | f::r ->
+        let childDirs = List.filter(fun (d: directoryEntity) -> (Some f.id) = d.parent) state.directories in
+        findChildDirs (r@childDirs) (f::newDirList) in
     
-    match_parent_id list []
+    let allDirs = findChildDirs list [] in
+    
+    let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
+    match dirList with 
+      | [] -> fileList
+      | head::tail -> 
+        let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
+        match_parent_id tail fileList@files in
+    
+    match_parent_id allDirs []
 ;;
 
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
@@ -200,6 +213,23 @@ let get_file_path (fileId: int) (state: system): string option =
           else create_path d.parent d.name (append ^ "/" ^ path)))
       ) in
     Some (create_path (Some file.parentId) file.name "")
+;;
+
+let get_dir_path_with_root (dirId: int) (state: system): string option =
+  let dirOption: directoryEntity option = get_directory dirId state in
+  match dirOption with 
+  | None -> None
+  | Some dir -> 
+    let rec create_path (parentId: int option) (append: string) (path: string): string =
+      (match parentId with
+      | None -> append ^ "/" ^ path
+      | Some id -> 
+        (match (get_directory id state) with 
+        | None -> append ^ "/" ^ path
+        | Some d -> 
+          create_path d.parent d.name (append ^ "/" ^ path))
+      ) in
+    Some (create_path dir.parent dir.name "")
 ;;
 
 let can_read_file (userId: int) (fileId: int) (state: system): bool =
@@ -317,6 +347,16 @@ let is_empty_dir (dirId: int) (state: system) : bool =
   if checkFiles state.files = false then false else true
 ;;
 
+(* Checks if a given filename exists in a specific directory *)
+let file_exists (dirId: int) (name: string) (state: system): bool = 
+  let rec file_name_exists (files: fileEntity list) (file_name: string) (directoryId: int): bool = 
+    match files with 
+    | [] -> false 
+    | f::r -> 
+      if f.name = file_name && f.parentId = directoryId then true 
+      else file_name_exists r file_name directoryId in
+  if file_name_exists state.files name dirId = false then false else true
+
 let printStateStatus s =
   let _ = (Printf.printf "\n!!!!!!!!!!!!!!!! Users: %d - Dirs: %d - Files: %d\n" (List.length !orbit_state.users) (List.length !orbit_state.directories) (List.length !orbit_state.files); ()) in
   ()
@@ -345,3 +385,32 @@ let next_state_done (newState: system) : system ref =
     begin orbit_do_modification := false end; 
     begin orbit_state := newState end; 
     orbit_state
+
+let dir_exists (dirId: int) (name: string) (state: system): bool = 
+  let rec dir_name_exists (directories: directoryEntity list) (dir_name: string) (directoryId: int): bool = 
+    match directories with 
+    | [] -> false 
+    | d::r -> 
+      if d.name = dir_name && d.parent = Some(directoryId) then true 
+      else dir_name_exists r dir_name directoryId in
+  if dir_name_exists state.directories name dirId = false then false else true
+;;
+
+let increaseFileCount (s: unit) =
+  let newState = {
+    !orbit_state with
+    fileIdCounter = !orbit_state.fileIdCounter + 1;
+  } in
+  let _ = next_state_done newState in
+  ()
+;;
+
+(* Not used for now, many later
+let increaseDirCount (s: unit) =
+  let newState = {
+    !orbit_state with
+    directoryIdCounter = !orbit_state.directoryIdCounter + 1;
+  } in
+  let _ = next_state_done newState in
+  ()
+;; *)
