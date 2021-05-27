@@ -153,14 +153,23 @@ let get_list_files (userId: int) (state: system) : fileEntity list =
   match availableDirectories with
   | [] -> []
   | list -> 
-      
-      let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
-      match dirList with 
-      | [] -> fileList
-      | head::tail -> let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
-      match_parent_id tail fileList@files in
+    let rec findChildDirs (dirList: directoryEntity list) (newDirList: directoryEntity list): directoryEntity list =
+      match dirList with
+      | [] -> newDirList
+      | f::r ->
+        let childDirs = List.filter(fun (d: directoryEntity) -> (Some f.id) = d.parent) state.directories in
+        findChildDirs (r@childDirs) (f::newDirList) in
     
-    match_parent_id list []
+    let allDirs = findChildDirs list [] in
+    
+    let rec match_parent_id (dirList: directoryEntity list) (fileList: fileEntity list) : fileEntity list = 
+    match dirList with 
+      | [] -> fileList
+      | head::tail -> 
+        let files = List.filter(fun d -> head.id = d.parentId ) state.files in  
+        match_parent_id tail fileList@files in
+    
+    match_parent_id allDirs []
 ;;
 
 let get_list_files_ignore_checkout (userId: int) (state: system) : fileEntity list =
@@ -377,6 +386,15 @@ let next_state_done (newState: system) : system ref =
     begin orbit_state := newState end; 
     orbit_state
 
+let dir_exists (dirId: int) (name: string) (state: system): bool = 
+  let rec dir_name_exists (directories: directoryEntity list) (dir_name: string) (directoryId: int): bool = 
+    match directories with 
+    | [] -> false 
+    | d::r -> 
+      if d.name = dir_name && d.parent = Some(directoryId) then true 
+      else dir_name_exists r dir_name directoryId in
+  if dir_name_exists state.directories name dirId = false then false else true
+;;
 
 let increaseFileCount (s: unit) =
   let newState = {
@@ -386,3 +404,13 @@ let increaseFileCount (s: unit) =
   let _ = next_state_done newState in
   ()
 ;;
+
+(* Not used for now, many later
+let increaseDirCount (s: unit) =
+  let newState = {
+    !orbit_state with
+    directoryIdCounter = !orbit_state.directoryIdCounter + 1;
+  } in
+  let _ = next_state_done newState in
+  ()
+;; *)
