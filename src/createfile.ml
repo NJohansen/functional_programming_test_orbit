@@ -96,6 +96,7 @@ let createFileUpdateState (state: Orbit.system ref) (userId: int) (parentId: int
       path = path;
       snapshotsEnabled = false;
       content = "";
+      versionChanged = 1;
     } in
   let newFileList = newFile::!state.files in  
   let updateStateFileIdCounter = fileId in

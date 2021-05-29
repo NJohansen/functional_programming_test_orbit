@@ -9,6 +9,7 @@ open Deletedir
 open Getfilemeta
 open Getdirectory
 open Getversion
+open Uploadfile
 open Movefile
 
 module CConf =
@@ -25,6 +26,7 @@ struct
     | Create_Directory of int * int * string * int 
     | Delete_File of int * int * int
     | Delete_Dir of int * int * int 
+    | Upload_File of int * int * int * int32
     | Get_File_Meta of int * int [@@deriving show { with_path = false }]
 
   let gen_cmd (st: state) =
@@ -86,6 +88,9 @@ struct
     let version_string_gen =
       Gen.map3 (fun f1 f2 f3 -> Printf.sprintf "%d.%d.%d.%d.%d.%d" f1 f2 f3 f3 f2 f1) Gen.small_signed_int Gen.small_signed_int Gen.small_signed_int in
 
+    let upload_file_gen = 
+      Gen.quad user_id_gen file_id_gen version_gen timestamp_gen in
+      
     let move_file_parameter_gen = 
       Gen.pair (Gen.triple user_id_gen file_id_gen version_gen) (Gen.triple dir_id_gen name_gen timestamp_gen) in
 
@@ -96,6 +101,7 @@ struct
         Gen.map2 (fun userId versionString -> Get_Version (userId, versionString)) user_id_gen version_string_gen;
         Gen.map3 (fun userId fileId version -> Delete_File (userId, fileId, version)) user_id_gen file_id_gen version_gen;
         Gen.map3 (fun userId dirId version -> Delete_Dir (userId, dirId, version)) user_id_gen dir_id_gen version_gen;
+        Gen.map (fun (userId, fileId, fileVersion, timestamp) -> Upload_File (userId, fileId, fileVersion, timestamp)) upload_file_gen;
         Gen.map (fun (userId, parentId, dirName, dirVersion) ->  Create_Directory (userId, parentId, dirName, dirVersion)) create_dir_parameter_gen;
         Gen.map2 (fun userId fileId -> Get_File_Meta (userId, fileId)) user_id_gen file_id_gen;
         Gen.map (fun (userId, dirId, name, timestamp) ->  Create_File (userId, dirId, name,  timestamp)) create_user_parameter_gen;
@@ -111,10 +117,11 @@ struct
     | Get_directory _ -> Orbit.next_state_done !st
     | Get_File _ -> Orbit.next_state_done !st
     | Get_Version _ -> Orbit.next_state_done !st
+    | Get_File_Meta _ -> Orbit.next_state_done !st
     | Move_File ((userId, fileId, version),(parentId, name, timestamp)) -> Movefile.moveFileUpdateState userId fileId version parentId name (Int32.to_int timestamp) st
     | Delete_File (userId, fileId, version) -> Deletefile.deleteFileUpdateState userId fileId version st
     | Delete_Dir (userId, dirId, version) -> Deletedir.deleteDirectoryUpdateState userId dirId version st
-    | Get_File_Meta _ -> st
+    | Upload_File (userId, fileId, version, timestamp) -> Uploadfile.uploadFileUpdateState st userId fileId version (Int32.to_int timestamp)
     | Create_File (userId, dirId, name, timestamp) -> Createfile.createFileUpdateState st userId dirId name (Int32.to_int timestamp) 
     | Create_Directory (userId, parentId, dirName, dirVersion) -> Createdir.createDirUpdateState st userId parentId dirName dirVersion
 
@@ -135,6 +142,8 @@ struct
       (Printf.printf "Delete file, user: %d - file: %d - version: %d \n" userId fileId version; Deletefile.checkDeleteFile userId fileId version !st)      
     | Delete_Dir (userId, dirId, version) -> 
       (Printf.printf "Delete dir, user: %d - dir: %d - version: %d \n" userId dirId version; Deletedir.checkDeleteDirectory userId dirId version !st)
+    | Upload_File (userId, fileId, version, timestamp) ->
+      (Printf.printf "Upload file, user: %d - file: %d - version: %d - timestamp: %ld\n" userId fileId version timestamp; Uploadfile.checkFileUpload userId fileId version (Int32.to_int timestamp) !st)
     | Get_File_Meta (userId, fileId) ->
       (Printf.printf "Get file metadata, user: %d - file: %d \n" userId fileId; Getfilemeta.checkFileMeta userId fileId !su)
     | Create_File (userId, dirId, name, timestamp) -> 
@@ -146,6 +155,6 @@ struct
 end
 module CT = QCSTM.Make(CConf)
 ;;
-(* QCheck_runner.set_seed 483586791;; *)
+(* QCheck_runner.set_seed 267150863;; *)
 QCheck_runner.run_tests ~verbose:true
   [CT.agree_test ~count:20 ~name:"orbit-model agreement"]
