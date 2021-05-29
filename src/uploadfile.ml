@@ -36,8 +36,6 @@ let getExpectedResultHeader (userId: int) (fileId:int) (fileVersion:int) (state:
         if (Orbit.has_crud_rights userId (Some file.parentId) state ) = false
         then Http_common.create_response ~x_entity:(Some "Parent") ~x_access_denied:(Some("Update")) Http_common.Unauthorized else
 
-        
-     
         Http_common.create_response ~content_type:(Some "application/json") Http_common.HttpOk
 
 let getExpectedResultBody (userId: int) (fileId:int) (fileVersion:int) (timestamp:int) (state: Orbit.system) : resultData option = 
@@ -51,8 +49,9 @@ let getExpectedResultBody (userId: int) (fileId:int) (fileVersion:int) (timestam
             timestamp = (timestamp * 10000000 + 621355968000000000)    
         }
 
-let checkFileUpload (userId: int) (fileId: int) (fileVersion:int) (timestamp:int)(state: Orbit.system) : bool = 
+let checkFileUpload (userId: int) (fileId: int) (fileVersion:int) (timestamp:int) (state: Orbit.system) : bool = 
     let url = Printf.sprintf "http://localhost:8085/file/upload?userId=%d&id=%d&version=%d&timestamp=%d" userId fileId fileVersion timestamp in
+    (* let curlContent: Curl.curlHTTPPost = Curl.CURLFORM_CONTENT ("TEST1", "TEST2", Curl.CONTENTTYPE "text/plain") in *)
     match Ezcurl.post ~url: url ~params: [] () with
     | Ok resp -> (
         Orbit.matchResults 
@@ -60,15 +59,6 @@ let checkFileUpload (userId: int) (fileId: int) (fileVersion:int) (timestamp:int
             (fun _ -> Http_common.map_response resp) 
             (fun _ -> getExpectedResultBody userId fileId fileVersion timestamp state) 
             (fun _ -> from_body resp.body)
-            (*let expect = getExpectedResultBody userId fileId fileVersion timestamp state in
-            let real = from_body resp.body in
-            if (compare expect (Some real)) = 0 then true
-            else false
-
-            let expHead = getExpectedResultHeader userId fileId fileVersion state in
-            let realHead = Http_common.map_response resp in
-            if (compare expHead realHead) != 0 then false
-            else true*)
     )
     | Error (_) -> false
 
@@ -86,7 +76,7 @@ let uploadFileUpdateState (state: Orbit.system ref) (userId: int) (fileId: int) 
                 id = fileId;
                 name = file.name;
                 size = 0;
-                mimetype = "application/octet-stream";
+                mimetype = "text/plain";
                 parentId = file.parentId;
                 version = file.version+1;
                 createdAt = file.createdAt;
@@ -95,20 +85,21 @@ let uploadFileUpdateState (state: Orbit.system ref) (userId: int) (fileId: int) 
                 path = file.path;
                 snapshotsEnabled = false;
                 content = "";
+                versionChanged = file.version+1;
             } in
             let rec fileToUpload (fileId: int) (files: Orbit.fileEntity list) (newFiles: Orbit.fileEntity list): Orbit.fileEntity list = 
                 (match files with
                     | [] -> newFiles
-                    | f::rest when f.id = fileId -> newFile::newFiles
+                    | f::rest when f.id = fileId -> newFiles @ (newFile::rest)
                     | f::rest -> fileToUpload fileId rest (newFiles @ [f])) in
-    let newFileList = fileToUpload fileId !state.files [] in
+            let newFileList = fileToUpload fileId !state.files [] in
     
-    let newState = {
-        !state with
-        files = newFileList;
-    } in 
+            let newState = {
+                !state with
+                files = newFileList;
+            } in 
 
-    Orbit.next_state_done newState
+            Orbit.next_state_done newState
 ;;
 
 

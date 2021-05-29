@@ -155,6 +155,6 @@ struct
 end
 module CT = QCSTM.Make(CConf)
 ;;
-(* QCheck_runner.set_seed 483586791;; *)
+(* QCheck_runner.set_seed 267150863;; *)
 QCheck_runner.run_tests ~verbose:true
   [CT.agree_test ~count:20 ~name:"orbit-model agreement"]

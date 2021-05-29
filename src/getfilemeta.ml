@@ -44,7 +44,7 @@ let getExpectedResultData (userId: int) (fileId: int) (state: Orbit.system) : re
             name = file.name; 
             parentId = file.parentId; 
             version = file.version; 
-            versionChanged = 1; 
+            versionChanged = file.versionChanged; 
             timestamp = (string_of_int file.msTimestamp)    
         }
 
