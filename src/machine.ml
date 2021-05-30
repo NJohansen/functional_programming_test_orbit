@@ -33,58 +33,44 @@ struct
     let user_id_gen =
       let ids: int list = (List.map (fun (u: userEntity) -> u.id) !st.users) in
       let idsList = if List.length ids = 0 then [1] else ids in
-      Gen.oneof [
-        Gen.oneofl idsList;
-        Gen.small_signed_int;
-      ] in
+      Gen.frequency[(90, Gen.oneofl idsList); (10, Gen.small_signed_int);] in
     
     let file_id_gen =
       let ids: int list = (List.map (fun (u: fileEntity) -> u.id) !st.files) in
       let idsList = if List.length ids = 0 then [1] else ids in
-      Gen.oneof [
-        Gen.oneofl idsList;
-        Gen.small_signed_int;
-      ] in
+      Gen.frequency[(90, Gen.oneofl idsList); (10, Gen.small_signed_int);] in
 
     let dir_id_gen =
       let ids: int list = (List.map (fun (u: directoryEntity) -> u.id) !st.directories) in
       let idsList = if List.length ids = 0 then [1] else ids in
-      Gen.oneof [
-        Gen.oneofl idsList;
-        Gen.small_signed_int;
-      ] in
+      Gen.frequency[(90, Gen.oneofl idsList); (10, Gen.small_signed_int);] in
 
     let version_gen =
-      Gen.oneof [
-        Gen.oneofl [1;2;3;4;5];
-        Gen.small_signed_int;
-      ] in
+      Gen.frequency[(90, Gen.oneofl [1;2;3;4;5]); Gen.small_signed_int;] in
 
     let char_gen = 
       let char_list: char list = ['a';'b';'c';'d';'e';'f';'g';'h';'i';'j';'k';'l';'m';'n';'o';'p';'q';'r';'s';'t';'u';'v';'x';'y';'z';] in 
-      Gen.oneofl char_list
-      in
+      Gen.oneofl char_list in
+
     let forbidden_char_gen = 
       let forbidden_name_characters: char list = ['/'; ':'; '*'; '?'; '\"'; '<'; '>';] in (*Excluding backslash to avoid any string interpretation issues *)
-      Gen.oneofl forbidden_name_characters
-      in
+      Gen.oneofl forbidden_name_characters in
+
     let name_string_gen = 
-      Gen.frequency[(95, char_gen); (5, forbidden_char_gen);]
-      in
+      Gen.frequency[(95, char_gen); (5, forbidden_char_gen);] in
+
     let name_gen =
-        Gen.string_size ~gen:name_string_gen Gen.small_int;
-      in
+      Gen.string_size ~gen:name_string_gen Gen.small_int in
 
     let timestamp_gen =
-        Gen.ui32;
-      in
+      Gen.ui32 in
 
     let create_user_parameter_gen = 
-      Gen.quad user_id_gen dir_id_gen name_gen timestamp_gen 
-      in
+      Gen.quad user_id_gen dir_id_gen name_gen timestamp_gen in
+
     let create_dir_parameter_gen = 
-      Gen.quad user_id_gen dir_id_gen name_gen version_gen
-      in
+      Gen.quad user_id_gen dir_id_gen name_gen version_gen in
+      
     let version_string_gen =
       Gen.map3 (fun f1 f2 f3 -> Printf.sprintf "%d.%d.%d.%d.%d.%d" f1 f2 f3 f3 f2 f1) Gen.small_signed_int Gen.small_signed_int Gen.small_signed_int in
 
