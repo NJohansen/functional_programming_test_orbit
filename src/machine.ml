@@ -46,7 +46,7 @@ struct
       Gen.frequency[(90, Gen.oneofl idsList); (10, Gen.small_signed_int);] in
 
     let version_gen =
-      Gen.frequency[(90, Gen.oneofl [1;2;3;4;5]); Gen.small_signed_int;] in
+      Gen.frequency[(90, Gen.oneofl [1;2;3;4;5]); (10, Gen.small_signed_int);] in
 
     let char_gen = 
       let char_list: char list = ['a';'b';'c';'d';'e';'f';'g';'h';'i';'j';'k';'l';'m';'n';'o';'p';'q';'r';'s';'t';'u';'v';'x';'y';'z';] in 
